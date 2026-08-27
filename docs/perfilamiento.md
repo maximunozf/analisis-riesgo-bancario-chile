@@ -4,7 +4,7 @@
 revisé manualmente 5 meses de cada reporte (enero 2023, julio 2024, octubre
 2025, noviembre 2025 y el mes más reciente disponible) para detectar cambios
 de formato en el tiempo. Documentar esto ahora evita errores silenciosos en
-la consolidación de los 29 meses del proyecto, y deja registro del criterio
+la consolidación de los 41 meses del proyecto, y deja registro del criterio
 usado para quien revise este repositorio.
 
 ## Fuentes
