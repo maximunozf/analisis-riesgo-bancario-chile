@@ -68,7 +68,85 @@ que el portal de la CMF siga en línea y mantenga su estructura**. Si la CMF reo
 URLs, el script de descarga necesitará ajustes; el análisis ya realizado no se pierde,
 pero la reproducción desde cero sí se vería afectada.
 
-## 7. Aprendizaje de proceso: un dry-run que no ejerce la ruta real no valida nada
+## 7. Resultado de la validación de completitud (Día 4)
+
+El consolidado se validó contra la matriz esperada antes de darlo por bueno:
+
+| Chequeo | Resultado |
+|---|---|
+| Filas | **2.460** = 5 bancos × 41 meses × 6 segmentos × 2 indicadores |
+| Duplicados de clave (`periodo`+`banco`+`indicador`+`segmento`) | 0 |
+| Meses continuos entre ene-2023 y may-2026 | sí, sin huecos |
+| Valores negativos o superiores a 100% | 0 |
+| Nulos | 164, **todos estructurales** (ver sección 8) |
+| Cobertura de meses entre ambos indicadores | idéntica |
+
+Dos errores encontrados y corregidos en esta etapa, ambos silenciosos:
+
+- **Los índices de columna estaban corridos en los dos reportes.** Provisiones abre con
+  una columna extra (`Índice Provisiones s/ Colocaciones — Banco`) antes del desglose, de
+  modo que sus segmentos van corridos +1 respecto de morosidad. Usar un único mapa para
+  ambos reportes habría producido un CSV que **no falla, se publica**: `comerciales`
+  guardado como `total`, `consumo` como `personas`. Ahora hay un mapa por reporte,
+  verificado contra 6 archivos reales repartidos a ambos lados de los dos cambios de
+  formato conocidos.
+- **La hoja de provisiones se llama `"CUADRO N°1 "`, con un espacio final.** El script ya
+  no exige coincidencia exacta: resuelve el nombre de hoja comparando en forma
+  normalizada, lo que además lo hace tolerante a mayúsculas y tildes.
+
+## 8. El segmento "adeudado por bancos" no es analizable
+
+- En **morosidad** vale exactamente `0,00` en los 41 meses para los tres bancos
+  tradicionales, y viene como `---` (dato ausente) en Falabella y Ripley, que no operan
+  ese segmento. De ahí salen los 164 nulos: 2 bancos × 41 meses × 2 indicadores.
+- En **provisiones** se mueve en un rango de 0,04% a 0,24%, órdenes de magnitud por debajo
+  del resto.
+
+Decisión: el segmento **se conserva en el CSV** (el consolidado refleja la fuente tal como
+es), pero **se excluye del análisis y del dashboard**. Un indicador constante en cero no
+distingue nada entre bancos y solo agregaría ruido visual.
+
+## 9. La cartera de vivienda de Banco Ripley distorsiona cualquier promedio simple
+
+La morosidad de vivienda de Ripley sube de ~13% (2023) a ~27% (2026), mientras su índice
+de provisiones de vivienda se mantiene entre 0,4% y 0,5%. La cobertura implícita de ese
+segmento queda cerca de 0,02 — un valor que sería alarmante si se leyera como el resto.
+
+La explicación más plausible es que se trata de una cartera residual, muy pequeña y con
+garantía hipotecaria detrás: la garantía reduce la pérdida esperada y por lo tanto la
+provisión exigida, aunque la mora sea alta. **Este análisis no puede confirmarlo con los
+datos de la CMF**, porque los reportes usados entregan índices porcentuales y no los saldos
+que permitirían medir el peso de esa cartera.
+
+Consecuencia: el KPI central se lee sobre `total_colocaciones` y `consumo`. Cualquier
+lectura del segmento vivienda en retail financiero va acompañada de esta advertencia, y no
+se calculan promedios simples de vivienda entre los dos grupos.
+
+## 10. Quiebre en las provisiones comerciales de Banco Ripley
+
+El índice de provisiones comerciales de Ripley cae de ~11,9% (promedio 2023) a ~1,5%
+(2026), mientras su morosidad comercial se mantiene alta, entre 16% y 21%. Es el
+movimiento más brusco de toda la serie.
+
+Un cambio de esa magnitud, con la mora sin mejorar en paralelo, apunta más a un evento
+contable —venta o castigo de cartera, reclasificación de segmento— que a una mejora real
+del riesgo. **Con estos datos no se puede determinar cuál de las dos cosas es.** Se
+reporta como observación, nunca como "Ripley mejoró su riesgo comercial".
+
+## 11. El índice de cobertura compara dos porcentajes con denominadores distintos
+
+El KPI central se calcula como `índice de provisiones / índice de morosidad`. Eso equivale
+al cociente de montos (provisiones / cartera morosa) **solo si ambos porcentajes usan el
+mismo denominador**.
+
+En la fuente los denominadores se llaman distinto: morosidad usa *"Colocaciones a costo
+amortizado"* y provisiones usa *"Créditos y cuentas por cobrar a clientes"*. Son conceptos
+equivalentes en el marco contable de la CMF, y por eso se consideran comparables, pero
+**esta equivalencia no fue verificada contra los saldos**. El indicador debe leerse como
+una razón de cobertura aproximada y comparable entre bancos, no como un cociente contable
+exacto.
+
+## 12. Aprendizaje de proceso: un dry-run que no ejerce la ruta real no valida nada
 
 El script de descarga tenía un modo `--dry-run` que reportó "75 ok" mientras la corrida
 real fallaba en los 75 archivos. La causa: los índices de la CMF redirigen `/617/` hacia
