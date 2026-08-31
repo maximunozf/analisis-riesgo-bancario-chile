@@ -1,0 +1,34 @@
+# ---------------------------------------------------------------------------
+# .gitignore — analisis-riesgo-bancario-chile
+# ---------------------------------------------------------------------------
+
+# Entorno virtual: se recrea con `pip install -r requirements.txt`.
+.venv/
+venv/
+
+# Datos crudos de la CMF (82 archivos Excel, decenas de MB).
+# POR QUÉ no se versionan: son fuente pública y 100% reproducibles corriendo
+# `python scripts/descargar_cmf.py`. Versionarlos infla el repo y no aporta
+# nada que el script no regenere. Lo que SÍ se versiona es el consolidado
+# limpio en data/processed/, que es el resultado del trabajo de limpieza.
+data/raw/
+
+# Salidas de diagnóstico y logs de corridas (no son documentación).
+docs/*.txt
+
+# Herramienta de diagnóstico de un solo uso, no forma parte del pipeline.
+scripts/diag_cmf.py
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Power BI / Excel temporales
+~$*.xlsx
+*.pbix.tmp
+
+# Sistema operativo / editor
+Thumbs.db
+.DS_Store
+.vscode/

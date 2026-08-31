@@ -2,10 +2,14 @@
 
 **Por qué existe este documento:** antes de escribir el script de limpieza,
 revisé manualmente 5 meses de cada reporte (enero 2023, julio 2024, octubre
-2025, noviembre 2025 y el mes más reciente disponible) para detectar cambios
-de formato en el tiempo. Documentar esto ahora evita errores silenciosos en
-la consolidación de los 41 meses del proyecto, y deja registro del criterio
-usado para quien revise este repositorio.
+2025, noviembre 2025 y el mes más reciente disponible al momento del
+perfilamiento) para detectar cambios de formato en el tiempo. Documentar esto
+ahora evita errores silenciosos en la consolidación de los **41 meses** del
+proyecto (enero 2023 – mayo 2026), y deja registro del criterio usado para
+quien revise este repositorio.
+
+Los meses de muestra no se eligieron al azar: cubren los dos extremos de la
+serie y los puntos donde se sabía que hubo cambios en el sistema bancario.
 
 ## Fuentes
 
@@ -44,4 +48,20 @@ tanto no aparece en ninguno de los dos reportes fuente.*
 Los reportes de morosidad y provisiones no se publican el mismo día del mes,
 por lo que la serie de provisiones queda sistemáticamente **un mes detrás**
 de la de morosidad. El análisis se acota a los meses donde ambos indicadores
-están disponibles.
+están disponibles: la serie cierra en **mayo 2026**, y `morosidad/2026-06.xlsx`
+se conserva en `data/raw` pero queda fuera del consolidado.
+
+## Verificación posterior a la descarga completa
+
+El perfilamiento se hizo sobre 5 meses de muestra. Al descargar los 41 meses
+aparecieron dos escalones de formato que la muestra no dejaba ver con claridad
+y que conviene tener presentes si la consolidación arroja algo raro:
+
+- **Provisiones cambia de formato en enero 2024:** los archivos de 2023 pesan
+  ~478 KB y desde `2024-01` bajan a ~330 KB. La muestra cruzaba ese corte
+  (2023-01 y 2024-07), así que la lógica de extracción ya estaba validada a
+  ambos lados.
+- **Morosidad tiene tres escalones de tamaño:** ~40 KB (ene-feb 2023), ~51 KB
+  (mar 2023 – dic 2025) y ~42 KB (desde ene 2026).
+
+Ambos quedan registrados en [`limitaciones.md`](limitaciones.md).
