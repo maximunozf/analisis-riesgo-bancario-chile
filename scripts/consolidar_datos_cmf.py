@@ -22,7 +22,7 @@ Cada decisión responde a un hallazgo documentado del perfilamiento:
 
   * Hallazgo #2 (la estructura de COLUMNAS es idéntica y estable en todo el
     período):  por eso las columnas se identifican por ÍNDICE FIJO configurable
-    (COLUMNAS_SEGMENTO). Es defendible fijarlas porque su estabilidad se
+    (COLUMNAS_MOROSIDAD / COLUMNAS_PROVISIONES). Es defendible fijarlas porque su estabilidad se
     verificó manualmente en 5 meses distintos.
 
   * Hallazgo #3 (el nº de filas de encabezado VARÍA entre meses):  por eso las
@@ -49,7 +49,7 @@ CÓMO USARLO
        python consolidar_datos_cmf.py --inspeccionar data/raw/morosidad/2023-01.xlsx
 
    Eso imprime la grilla cruda (fila x columna) con índices. Con eso confirmás
-   / ajustás el diccionario COLUMNAS_SEGMENTO de abajo.
+   / ajustás el diccionario COLUMNAS_MOROSIDAD / COLUMNAS_PROVISIONES de abajo.
 
 2) Consolidar todo:
 
@@ -82,7 +82,30 @@ DIR_MOROSIDAD = RAIZ_REPO / "data" / "raw" / "morosidad"
 DIR_PROVISIONES = RAIZ_REPO / "data" / "raw" / "provisiones"
 RUTA_SALIDA = RAIZ_REPO / "data" / "processed" / "consolidado_cmf.csv"
 
+# Ventana de períodos que ENTRA al consolidado (ambos extremos incluidos).
+#
+# ¿Por qué existe este corte y no consolidamos "todo lo que haya en raw"?
+# El KPI central del proyecto es el índice de cobertura = provisiones / cartera
+# morosa, y exige AMBAS fuentes del MISMO mes. Al 27-ago-2026 la CMF tenía
+# publicada morosidad hasta jun-2026 pero provisiones solo hasta may-2026.
+# Por eso data/raw/morosidad contiene 2026-06.xlsx: se descargó y se conserva
+# (regla del proyecto: nunca borrar ni modificar data/raw), pero queda FUERA
+# del consolidado. Sin este filtro la serie quedaría asimétrica (42 meses de
+# morosidad vs. 41 de provisiones) y el mes 2026-06 tendría cobertura nula.
+#
+# Regla adoptada: el período cierra en el último mes con ambas fuentes
+# publicadas -> may-2026. Documentado en docs/limitaciones.md.
+PERIODO_INICIO = date(2023, 1, 1)
+PERIODO_FIN = date(2026, 5, 1)
+
 # Hoja a leer en cada tipo de reporte (Hallazgo #1).
+#
+# OJO: en los archivos de provisiones la hoja se llama literalmente
+# "CUADRO N°1 " — CON UN ESPACIO AL FINAL. pandas exige coincidencia exacta,
+# así que `sheet_name="CUADRO N°1"` falla con "Worksheet named ... not found".
+# En vez de escribir el espacio (invisible y frágil), la hoja se resuelve
+# comparando nombres NORMALIZADOS (ver resolver_hoja): así el script aguanta
+# espacios sobrantes, mayúsculas y tildes distintas entre meses.
 HOJA_MOROSIDAD = "Mora 90 Indiv"
 HOJA_PROVISIONES = "CUADRO N°1"
 
@@ -103,20 +126,55 @@ BANCOS_ALCANCE = {
 }
 
 # Mapa SEGMENTO -> índice de columna (base 0).
-# --- VERIFICAR CON --inspeccionar ANTES DE CONFIAR EN ESTOS NÚMEROS ---
-# Son estables en todo el período (Hallazgo #2), pero como el perfilamiento no
-# registró el índice numérico exacto de cada columna, corré primero el modo
-# inspeccionar y ajustá estos valores a lo que veas en el archivo real.
 #
-# Estructura documentada de columnas:
-#   Total | Comerciales | Personas(Total | Consumo | Vivienda) | Adeudado bancos
-COLUMNAS_SEGMENTO = {
-    "total_colocaciones": 2,   # Cartera total
-    "comerciales":        3,   # Colocaciones comerciales
-    "personas_total":     4,   # Personas (total)
-    "consumo":            5,   # Personas - consumo
-    "vivienda":           6,   # Personas - vivienda
-    "adeudado_bancos":    7,   # Adeudado por bancos
+# VERIFICADO con --inspeccionar contra archivos reales (30-ago-2026):
+# morosidad 2023-01 / 2025-11 / 2026-01 y provisiones 2023-01 / 2024-07 / 2026-05,
+# es decir a ambos lados de los dos cambios de formato detectados en el
+# perfilamiento. Los índices son idénticos en los 6 archivos (Hallazgo #2).
+#
+# CADA REPORTE TIENE SU PROPIO MAPA, no uno compartido. Aunque los dos cuadros
+# se ven casi iguales, las columnas de provisiones están corridas +1 respecto
+# de las de morosidad, porque provisiones abre con una columna extra
+# ("Índice Provisiones s/ Colocaciones — Banco") antes del desglose. Usar un
+# solo mapa para ambos leería la columna equivocada en uno de los dos y
+# produciría un CSV con números plausibles pero falsos: el peor error posible,
+# porque no se cae, se publica.
+#
+# Morosidad — encabezado real (filas 8-10 del Excel):
+#   [2] Colocaciones (costo amortizado y valor razonable) — Total
+#   [3] Colocaciones a costo amortizado — Total
+#   [4] Comerciales   [5] Personas Total   [6] Consumo   [7] Vivienda
+#   [8] Adeudado por bancos          [10][11] montos en MM$ (no se usan aquí)
+#
+# ¿Por qué [3] y no [2] como "total"? Porque el desglose por segmento
+# ([4]-[8]) cuelga del bloque "Colocaciones a costo amortizado". Tomar el
+# total de [2] mezclaría dos denominadores distintos y el total dejaría de
+# ser comparable con sus propios componentes.
+COLUMNAS_MOROSIDAD = {
+    "total_colocaciones": 3,
+    "comerciales":        4,
+    "personas_total":     5,
+    "consumo":            6,
+    "vivienda":           7,
+    "adeudado_bancos":    8,
+}
+
+# Provisiones — encabezado real (filas 8-11 del Excel):
+#   [3] Índice provisiones s/ colocaciones — Banco (total institución)
+#   [4] Créditos y cuentas por cobrar a clientes — Total
+#   [5] Comerciales   [6] Personas Total   [7] Consumo   [8] Vivienda
+#   [9] Adeudado por bancos
+#   [11] Exposición créditos contingentes   [13] Provisiones adicionales
+#
+# Mismo criterio que en morosidad: el "total" es [4], la cabecera del bloque
+# del que cuelgan los segmentos, no [3] que es el índice de todo el banco.
+COLUMNAS_PROVISIONES = {
+    "total_colocaciones": 4,
+    "comerciales":        5,
+    "personas_total":     6,
+    "consumo":            7,
+    "vivienda":           8,
+    "adeudado_bancos":    9,
 }
 
 # Nombres de indicador tal como quedarán en el CSV (snake_case).
@@ -240,6 +298,31 @@ def extraer_periodo(nombre_archivo: str) -> date:
 # 3. LECTURA Y EXTRACCIÓN DE UN ARCHIVO
 # =========================================================================
 
+def resolver_hoja(ruta: Path, hoja_buscada: str) -> str:
+    """
+    Devuelve el nombre EXACTO de la hoja dentro del archivo que corresponde a
+    `hoja_buscada`, comparando de forma normalizada.
+
+    ¿Por qué no pasar el nombre directo a pandas? Porque en los reportes de
+    provisiones la hoja se llama "CUADRO N°1 " con un espacio final invisible,
+    y pandas exige coincidencia byte a byte: falla con "Worksheet named
+    'CUADRO N°1' not found". Hardcodear el espacio funcionaría hoy pero es
+    frágil (nadie lo ve al leer el código y la CMF puede quitarlo sin aviso).
+    Comparar normalizado resuelve el espacio, las mayúsculas y las tildes de
+    una sola vez, y si aun así no aparece, el error lista las hojas reales
+    en vez de dejarte adivinando.
+    """
+    hojas = pd.ExcelFile(ruta).sheet_names
+    objetivo = normalizar(hoja_buscada)
+    for nombre in hojas:
+        if normalizar(nombre) == objetivo:
+            return nombre
+    raise ValueError(
+        f"No encontré la hoja '{hoja_buscada}' en {ruta.name}. "
+        f"Hojas disponibles: {hojas}"
+    )
+
+
 def leer_grilla(ruta: Path, hoja: str) -> pd.DataFrame:
     """
     Lee la hoja indicada como grilla cruda, sin interpretar encabezados.
@@ -251,14 +334,8 @@ def leer_grilla(ruta: Path, hoja: str) -> pd.DataFrame:
     dtype=object: leemos todo como texto/objeto para no perder ceros ni que
     pandas convierta a un tipo inesperado antes de que limpiemos nosotros.
     """
-    try:
-        return pd.read_excel(ruta, sheet_name=hoja, header=None, dtype=object)
-    except ValueError as e:
-        # Típicamente: la hoja no existe con ese nombre.
-        raise ValueError(
-            f"No pude leer la hoja '{hoja}' en {ruta.name}. "
-            f"Verificá el nombre exacto de la hoja. Detalle: {e}"
-        )
+    hoja_real = resolver_hoja(ruta, hoja)
+    return pd.read_excel(ruta, sheet_name=hoja_real, header=None, dtype=object)
 
 
 def localizar_fila_banco(grilla: pd.DataFrame, tokens, modo: str):
@@ -288,7 +365,7 @@ def localizar_fila_banco(grilla: pd.DataFrame, tokens, modo: str):
     return None
 
 
-def extraer_archivo(ruta: Path, hoja: str, indicador: str) -> list:
+def extraer_archivo(ruta: Path, hoja: str, indicador: str, columnas: dict) -> list:
     """
     Extrae los registros de un archivo y los devuelve en formato LARGO (tidy):
     una fila por combinación (periodo, banco, indicador, segmento, valor).
@@ -309,7 +386,7 @@ def extraer_archivo(ruta: Path, hoja: str, indicador: str) -> list:
             print(f"    [!] {banco} no encontrado en {ruta.name}")
             continue
 
-        for segmento, col in COLUMNAS_SEGMENTO.items():
+        for segmento, col in columnas.items():
             # Protección: la columna configurada podría no existir en la grilla.
             if col >= grilla.shape[1]:
                 valor = None
@@ -330,7 +407,7 @@ def extraer_archivo(ruta: Path, hoja: str, indicador: str) -> list:
     return registros
 
 
-def procesar_directorio(directorio: Path, hoja: str, indicador: str) -> list:
+def procesar_directorio(directorio: Path, hoja: str, indicador: str, columnas: dict) -> list:
     """Procesa todos los .xlsx de una carpeta y acumula los registros."""
     if not directorio.exists():
         raise FileNotFoundError(f"No existe la carpeta {directorio}")
@@ -343,11 +420,28 @@ def procesar_directorio(directorio: Path, hoja: str, indicador: str) -> list:
         print(f"  [!] No hay archivos Excel en {directorio}")
         return []
 
-    todos = []
-    print(f"  Procesando {len(archivos)} archivo(s) de '{indicador}'...")
+    # Se separan los archivos dentro y fuera de la ventana ANTES de leerlos.
+    # ¿Por qué filtrar por nombre y no después, sobre el DataFrame? Porque así
+    # no gastamos tiempo abriendo un Excel que igual íbamos a descartar, y el
+    # log deja constancia explícita de qué se excluyó y por qué (trazabilidad:
+    # el consolidado tiene que ser explicable, no "misteriosamente más chico").
+    en_alcance, fuera_alcance = [], []
     for archivo in archivos:
+        periodo = extraer_periodo(archivo.name)
+        if PERIODO_INICIO <= periodo <= PERIODO_FIN:
+            en_alcance.append(archivo)
+        else:
+            fuera_alcance.append((archivo, periodo))
+
+    if fuera_alcance:
+        print(f"  [i] Fuera de alcance (se conservan en raw, no se consolidan): "
+              f"{', '.join(a.name for a, _ in fuera_alcance)}")
+
+    todos = []
+    print(f"  Procesando {len(en_alcance)} archivo(s) de '{indicador}'...")
+    for archivo in en_alcance:
         print(f"  - {archivo.name}")
-        todos.extend(extraer_archivo(archivo, hoja, indicador))
+        todos.extend(extraer_archivo(archivo, hoja, indicador, columnas))
     return todos
 
 
@@ -386,8 +480,26 @@ def validar_completitud(df: pd.DataFrame) -> None:
         print(f"    Filas                : {len(sub)} (esperado {esperado})")
         print(f"    Valores nulos        : {nulos}")
         if nulos > 0:
-            print("      -> Nulos altos suelen indicar un índice de COLUMNAS_SEGMENTO")
-            print("         mal configurado. Verificá con --inspeccionar.")
+            # Desglose banco x segmento de los nulos.
+            # ¿Por qué? Porque hay DOS causas muy distintas y el conteo total
+            # no las distingue:
+            #   (a) nulo ESTRUCTURAL: la CMF publica "---" porque el banco no
+            #       opera ese segmento (Falabella y Ripley no tienen cartera
+            #       'adeudado por bancos'). Es un dato ausente legítimo y se
+            #       documenta en docs/limitaciones.md.
+            #   (b) nulo por ERROR: un índice de columna mal configurado deja
+            #       TODOS los bancos en nulo para un mismo segmento.
+            # La firma los separa: si los nulos se concentran en pocos bancos
+            # de un segmento es (a); si cubren los 5 bancos, es (b).
+            detalle = (sub[sub["valor"].isna()]
+                       .groupby(["segmento", "banco"]).size()
+                       .reset_index(name="n"))
+            for _, fila in detalle.iterrows():
+                marca = "ERROR?" if fila["n"] == n_meses and \
+                    detalle[detalle["segmento"] == fila["segmento"]]["banco"].nunique() == n_bancos \
+                    else "estructural"
+                print(f"      - {fila['segmento']:<20} {fila['banco']:<24} "
+                      f"{fila['n']:>3} mes(es)  [{marca}]")
 
     # Cruce entre indicadores: meses donde falta uno de los dos.
     meses_por_ind = df.groupby("indicador")["periodo"].apply(set).to_dict()
@@ -410,7 +522,7 @@ def validar_completitud(df: pd.DataFrame) -> None:
 def inspeccionar(ruta: str, hoja: str = None) -> None:
     """
     Imprime la grilla cruda de un archivo (primeras 40 filas x todas las
-    columnas) con índices, para verificar los índices de COLUMNAS_SEGMENTO
+    columnas) con índices, para verificar los índices de COLUMNAS_MOROSIDAD / COLUMNAS_PROVISIONES
     contra un archivo real. Es la herramienta que hace confiable fijar
     columnas por índice.
     """
@@ -448,7 +560,7 @@ def inspeccionar(ruta: str, hoja: str = None) -> None:
         print(f"{idx:>4} |" + "".join(celdas))
 
     print("\nTip: identificá la fila de un banco de alcance y leé en qué número")
-    print("de columna [n] cae cada segmento. Ajustá COLUMNAS_SEGMENTO con eso.")
+    print("de columna [n] cae cada segmento. Ajustá COLUMNAS_MOROSIDAD / COLUMNAS_PROVISIONES con eso.")
 
 
 # =========================================================================
@@ -477,8 +589,10 @@ def main():
     # Modo 2 (por defecto): consolidar todo.
     print("Consolidando reportes CMF...\n")
     registros = []
-    registros += procesar_directorio(DIR_MOROSIDAD, HOJA_MOROSIDAD, INDICADOR_MOROSIDAD)
-    registros += procesar_directorio(DIR_PROVISIONES, HOJA_PROVISIONES, INDICADOR_PROVISIONES)
+    registros += procesar_directorio(
+        DIR_MOROSIDAD, HOJA_MOROSIDAD, INDICADOR_MOROSIDAD, COLUMNAS_MOROSIDAD)
+    registros += procesar_directorio(
+        DIR_PROVISIONES, HOJA_PROVISIONES, INDICADOR_PROVISIONES, COLUMNAS_PROVISIONES)
 
     if not registros:
         print("\n[X] No se generó ningún registro. Revisá las carpetas data/raw.")
