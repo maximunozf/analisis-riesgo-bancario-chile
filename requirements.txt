@@ -1,7 +1,14 @@
+# Dependencias directas del proyecto, con version fija.
+# Se pinnean solo las 4 que el codigo importa; sus dependencias transitivas
+# (numpy, urllib3, soupsieve, etc.) las resuelve pip. Un `pip freeze` completo
+# tambien reproduce el entorno, pero mezcla lo que se usa con lo que arrastro
+# y deja de leerse como documentacion del proyecto.
+# Instalar con: pip install -r requirements.txt
+
 # Consolidacion y analisis
-pandas
-openpyxl        # motor que usa pandas para leer .xlsx (no viene incluido)
+pandas==3.0.5
+openpyxl==3.1.5        # motor que usa pandas para leer .xlsx (no viene incluido)
 
 # Descarga automatizada desde el portal CMF
-requests
-beautifulsoup4
+requests==2.34.2
+beautifulsoup4==4.15.0
