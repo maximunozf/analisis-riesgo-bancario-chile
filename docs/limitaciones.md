@@ -157,3 +157,33 @@ rutas que respondían 404.
 El `--dry-run` no lo detectó porque solo imprime las URLs que construye — nunca las visita.
 Quedó como criterio para el resto del proyecto: **un modo de prueba que no ejerce la ruta
 real solo valida la etapa que sí ejecuta.**
+
+## 13. Una cobertura bajo 1 no es un incumplimiento normativo
+
+El índice de cobertura de este proyecto mide provisiones contra cartera con mora de 90 días
+o más. **La CMF no exige que esa razón sea mayor a 1.** Las provisiones se determinan por
+pérdida esperada según los modelos de cada banco, y las garantías reales —hipotecarias
+sobre todo— reducen la provisión exigida sobre una misma cartera morosa. Una cartera con
+alta proporción de vivienda tiene cobertura estructuralmente baja sin estar
+sub-provisionada.
+
+Consecuencia para la lectura de los resultados: cuando `hallazgos.md` reporta que BCI lleva
+25 de 41 meses bajo 1, eso describe **una trayectoria**, no un dictamen de suficiencia. El
+indicador sirve para comparar a un banco consigo mismo en el tiempo y para contrastar
+tendencias entre instituciones. No sirve para afirmar que un banco está mal provisionado, y
+en ningún gráfico de este proyecto se presenta el valor 1 como un umbral regulatorio.
+
+## 14. Los promedios entre bancos son simples, no ponderados
+
+Todos los agregados por grupo de este proyecto se calculan con `AVG()` sobre los bancos que
+lo componen. Eso le da a Banco de Chile el mismo peso que a Banco Ripley, pese a que sus
+carteras difieren en órdenes de magnitud.
+
+Lo correcto sería ponderar por saldo de colocaciones, y **no es posible con estas dos
+fuentes**: ambas publican índices porcentuales, ninguna publica el monto de la cartera.
+Obtenerlo exigiría incorporar un tercer reporte de la CMF (estados financieros), lo que
+queda fuera del alcance declarado.
+
+Por lo tanto, en todo este proyecto **"la morosidad de la banca tradicional" significa "el
+promedio de las morosidades de sus tres miembros"**, no la morosidad agregada del grupo. La
+distinción está impresa en la portada del dashboard, no escondida en un tooltip.
