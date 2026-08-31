@@ -1,1 +1,7 @@
+# Consolidacion y analisis
 pandas
+openpyxl        # motor que usa pandas para leer .xlsx (no viene incluido)
+
+# Descarga automatizada desde el portal CMF
+requests
+beautifulsoup4

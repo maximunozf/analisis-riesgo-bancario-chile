@@ -6,12 +6,20 @@
 .venv/
 venv/
 
-# Datos crudos de la CMF (82 archivos Excel, decenas de MB).
-# POR QUÉ no se versionan: son fuente pública y 100% reproducibles corriendo
-# `python scripts/descargar_cmf.py`. Versionarlos infla el repo y no aporta
-# nada que el script no regenere. Lo que SÍ se versiona es el consolidado
-# limpio en data/processed/, que es el resultado del trabajo de limpieza.
-data/raw/
+# Datos crudos de la CMF: no se versionan.
+# Son ~30 MB de Excel que cualquiera regenera con scripts/descargar_cmf.py,
+# y el repo se mantiene liviano y clonable.
+#
+# POR QUÉ se ignoran los .xlsx y NO la carpeta completa: así los .gitkeep
+# siguen versionados y quien clone el repo recibe data/raw/morosidad/ y
+# data/raw/provisiones/ ya creadas. Ignorando `data/raw/` entera, las carpetas
+# no existirían al clonar y el script de descarga fallaría con FileNotFoundError
+# antes de bajar el primer archivo.
+data/raw/morosidad/*.xlsx
+data/raw/provisiones/*.xlsx
+
+# Lo que SÍ se versiona es data/processed/: el consolidado limpio es el
+# resultado del trabajo de limpieza, no un insumo descargable.
 
 # Salidas de diagnóstico y logs de corridas (no son documentación).
 docs/*.txt
