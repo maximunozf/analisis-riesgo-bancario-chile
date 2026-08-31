@@ -6,6 +6,11 @@
 .venv/
 venv/
 
+# Credenciales de la base de datos. NUNCA se versionan.
+# Lo que si se versiona es .env.example, que documenta las variables
+# necesarias sin exponer ninguna clave.
+.env
+
 # Datos crudos de la CMF: no se versionan.
 # Son ~30 MB de Excel que cualquiera regenera con scripts/descargar_cmf.py,
 # y el repo se mantiene liviano y clonable.
@@ -24,8 +29,9 @@ data/raw/provisiones/*.xlsx
 # Salidas de diagnóstico y logs de corridas (no son documentación).
 docs/*.txt
 
-# Herramienta de diagnóstico de un solo uso, no forma parte del pipeline.
+# Herramientas de un solo uso, no forman parte del pipeline.
 scripts/diag_cmf.py
+scripts/reparar_mysql.ps1
 
 # Python
 __pycache__/
