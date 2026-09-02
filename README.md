@@ -2,7 +2,7 @@
 
 Análisis de la evolución del riesgo de crédito de cinco bancos chilenos entre enero 2023
 y mayo 2026, construido sobre **datos públicos reales de la Comisión para el Mercado
-Financiero (CMF)**, no sintéticos.
+Financiero (CMF)**
 
 ## Pregunta que responde
 
