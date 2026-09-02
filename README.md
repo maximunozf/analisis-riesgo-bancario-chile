@@ -104,19 +104,22 @@ Se muestran solo las carteras hoja (comerciales, consumo, vivienda). Los agregad
 un total junto a sus propias partes en el mismo eje invita a sumarlos, que es exactamente lo que
 estos datos no permiten.
 
-## Estado del proyecto
+## Cómo se construyó
 
-Avance al 1 de septiembre de 2026:
+Un proceso **ETL** completo y reproducible de punta a punta. La descarga automatizada trae 82
+archivos Excel desde el portal de la CMF —41 meses × 2 reportes— y la consolidación en Python
+resuelve las trampas del origen: encabezados que cambian de posición entre meses, instituciones
+que aparecen y desaparecen, y una fila oculta de códigos contables.
 
-- [x] Definición de alcance y pregunta de negocio
-- [x] Perfilamiento de las fuentes (5 meses de muestra, cambios de formato documentados)
-- [x] Descarga automatizada de la serie completa — 82 archivos Excel, 41 meses × 2 reportes
-- [x] Consolidación y validación de completitud — 2.460 filas, 0 duplicados, 41 meses continuos
-- [x] Modelo relacional en MySQL + diagrama ER
-- [x] Análisis SQL y hallazgos
-- [x] Dashboard Power BI (3 páginas, 8 medidas DAX)
-- [x] Validación cruzada dashboard ↔ datos (28 cifras, script reproducible)
-- [x] Documentación y publicación
+Sobre eso corre el control de **calidad de datos**: perfilamiento previo de cinco meses de
+muestra, verificación de inventario antes de consolidar y validación de completitud del
+resultado —2.460 filas, 0 duplicados, 41 meses continuos sin huecos—, además de siete chequeos
+de integridad en la carga.
+
+El **modelado de datos** es dimensional: dos dimensiones (banco y tiempo) y una tabla de hechos
+en formato largo, con una restricción `UNIQUE` sobre el grano completo para que una recarga
+falle en vez de duplicar en silencio. El análisis vive en SQL y en DAX, y las 28 cifras que se
+ven en el dashboard se contrastan contra su dato de origen con un script, no a ojo.
 
 ## Alcance
 
