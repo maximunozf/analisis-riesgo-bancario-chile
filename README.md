@@ -48,7 +48,7 @@ Y al bajar del grupo al banco aparece el corolario que rompe la intuición:
 Morosidad y cobertura no son dos formas de medir lo mismo: la primera describe la cartera, la
 segunda describe la decisión del banco frente a esa cartera.
 
-El desarrollo completo —seis hallazgos, con lo que los datos **no** permiten afirmar— está
+El desarrollo completo —siete hallazgos, con lo que los datos **no** permiten afirmar— está
 en [`docs/hallazgos.md`](docs/hallazgos.md).
 
 ## El dashboard
@@ -127,7 +127,7 @@ Avance al 1 de septiembre de 2026:
 | Banco Falabella | Retail financiero |
 | Banco Ripley | Retail financiero |
 | Banco de Chile | Banca tradicional |
-| Banco de Crédito e Inversiones (BCI) | Banca tradicional |
+| Banco de Crédito e Inversiones — en el dashboard, *Banco BCI* | Banca tradicional |
 | Banco Santander-Chile | Banca tradicional |
 
 **Período:** enero 2023 – mayo 2026 (41 meses, frecuencia mensual).
@@ -287,6 +287,13 @@ páginas obligaría a duplicar medidas o a mostrar cifras mezcladas.
 `tipo_institucion` se renombra a *Banca tradicional* / *Retail financiero*; en MySQL el modelo
 sigue en `snake_case`. El modelo mantiene la convención técnica, el dashboard habla el idioma de
 quien lo lee.
+
+**El nombre para mostrar de cada banco vive en `dim_banco`, no en Power Query.** BCI aparece
+como *Banco BCI*: el nombre legal completo se truncaba a "Banco de Credito e Inversion…" en los
+tres rankings de la página Comparativo, y BCI es como lo nombra el mercado. El cambio se hizo en
+`scripts/cargar_mysql.py` —la columna `nombre_banco` está declarada en el DDL como *nombre para
+mostrar en el dashboard*— y no con un *Reemplazar valores* en Power Query: así el rótulo se
+recrea solo al cargar la base desde cero, en vez de existir únicamente dentro del `.pbix`.
 
 **El estilo se aplica con un tema versionado, no formateando visual por visual.**
 `dashboard/tema_riesgo_cmf.json` está en el repo y se importa desde *Ver → Temas → Buscar temas*.

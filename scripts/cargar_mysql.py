@@ -63,7 +63,11 @@ CATALOGO_BANCOS = {
     "banco_falabella":       ("Banco Falabella",                        "retail_financiero"),
     "banco_ripley":          ("Banco Ripley",                           "retail_financiero"),
     "banco_de_chile":        ("Banco de Chile",                         "banca_tradicional"),
-    "banco_bci":             ("Banco de Credito e Inversiones (BCI)",   "banca_tradicional"),
+    # "Banco BCI" y no el nombre legal completo: el nombre largo se truncaba en los
+    # rankings del dashboard ("Banco de Credito e Inversion...") y BCI es como lo
+    # nombra el mercado. El nombre para mostrar se decide aqui, no en Power Query,
+    # para que el modelo siga siendo la unica fuente de los rotulos.
+    "banco_bci":             ("Banco BCI",                              "banca_tradicional"),
     "banco_santander_chile": ("Banco Santander-Chile",                  "banca_tradicional"),
 }
 
