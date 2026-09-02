@@ -38,12 +38,75 @@ posturas de riesgo completamente distintas según cuánto provisionen.
 La correlación entre las dos series mensuales de morosidad es **−0,19**: no es un ciclo de
 crédito común empujando a los cinco bancos, son dos trayectorias distintas.
 
+Y al bajar del grupo al banco aparece el corolario que rompe la intuición:
+
+> **Más mora no es menos cobertura.** El banco más moroso de los cinco (Ripley, 4,91%) es a la
+> vez el mejor cubierto (1,60) y el único que **reforzó** su cobertura desde 2023 (+0,13). El
+> único que provisiona bajo su propia cartera morosa (BCI, cobertura 0,90) es de los que menos
+> mora tienen (1,90%), y lleva 25 de 41 meses en esa posición.
+
+Morosidad y cobertura no son dos formas de medir lo mismo: la primera describe la cartera, la
+segunda describe la decisión del banco frente a esa cartera.
+
 El desarrollo completo —seis hallazgos, con lo que los datos **no** permiten afirmar— está
 en [`docs/hallazgos.md`](docs/hallazgos.md).
 
+## El dashboard
+
+Tres páginas en Power BI, cada una con **una** pregunta, no con quince métricas sueltas.
+
+### 1 · Portada — ¿se mueven igual los dos grupos?
+
+![Portada del dashboard](docs/capturas/01_portada.png)
+
+Dos tarjetas KPI con la cobertura 2026 de cada grupo y el gráfico protagonista: las dos
+trayectorias de cobertura contra una línea de referencia en 1,0. El insight va **escrito** en la
+página, no solo dibujado — quien la mira quince segundos tiene que salir con la conclusión, no
+con la tarea de deducirla.
+
+### 2 · Comparativo — ¿qué banco está más expuesto hoy?
+
+![Página Comparativo](docs/capturas/02_comparativo.png)
+
+Tres rankings del último mes publicado —morosidad, cobertura y **variación de cobertura desde
+2023**— más la trayectoria completa de los 41 meses.
+
+Los tres rankings comparten **el mismo orden de bancos** (morosidad descendente). En los dos que
+no miden morosidad ese orden se logra agregando la medida de morosidad al pozo *Información sobre
+herramientas* y ordenando por ella. Una versión anterior los ordenaba cada uno por su propia
+métrica: el ojo creía comparar posiciones alineadas y estaba comparando ranking contra ranking.
+**El orden de fila tiene que ser idéntico en los tres para que la comparación sea banco a banco.**
+
+El tercer gráfico —barras divergentes de variación— es el único visual que prueba el titular de
+la página con evidencia propia: cuatro bancos bajan su cobertura, uno la sube. Reemplazó a un
+gráfico de "meses con cobertura < 1" que gastaba una tarjeta entera en dos barras; ese dato pasó
+al cuadro de hallazgo, en texto.
+
+**El eje Y de la trayectoria va de 0,8 a 1,9 y no parte en cero, a propósito.** El umbral
+relevante del índice de cobertura es 1 —marcado con la línea de referencia—, no 0; partir en cero
+aplastaría las cinco series contra el techo. Está declarado en la nota al pie de la página para
+que nadie tenga que decidir si es un eje truncado a conveniencia.
+
+El mes del ranking no está escrito a mano en ningún filtro: se deriva de los datos con
+`MAX(fecha)`, así que al cargar junio el ranking se mueve solo.
+
+### 3 · Segmentación — ¿en qué cartera se parecen?
+
+![Página Segmentación](docs/capturas/03_segmentacion.png)
+
+Morosidad por tipo de cartera con múltiplos pequeños y **eje Y compartido**. La escala común es
+una decisión, no un descuido: el hallazgo de la página es una comparación de *brechas*, y solo
+con eje compartido la distancia entre las dos líneas significa lo mismo en los tres paneles. Ahí
+se ve que en comerciales y vivienda hay un abismo entre retail y banca, y que **en consumo las
+dos líneas casi se tocan**.
+
+Se muestran solo las carteras hoja (comerciales, consumo, vivienda). Los agregados quedan fuera:
+un total junto a sus propias partes en el mismo eje invita a sumarlos, que es exactamente lo que
+estos datos no permiten.
+
 ## Estado del proyecto
 
-**En construcción.** Avance real al 31 de agosto de 2026:
+Avance al 1 de septiembre de 2026:
 
 - [x] Definición de alcance y pregunta de negocio
 - [x] Perfilamiento de las fuentes (5 meses de muestra, cambios de formato documentados)
@@ -51,7 +114,9 @@ en [`docs/hallazgos.md`](docs/hallazgos.md).
 - [x] Consolidación y validación de completitud — 2.460 filas, 0 duplicados, 41 meses continuos
 - [x] Modelo relacional en MySQL + diagrama ER
 - [x] Análisis SQL y hallazgos
-- [ ] Dashboard Power BI (3 páginas, medidas DAX)
+- [x] Dashboard Power BI (3 páginas, 8 medidas DAX)
+- [x] Validación cruzada dashboard ↔ datos (28 cifras, script reproducible)
+- [x] Documentación y publicación
 
 ## Alcance
 
@@ -110,21 +175,41 @@ recrear la base desde cero, `--recrear`.
 temporal y lo renombra recién al terminar, de modo que una corrida interrumpida no deja
 archivos parciales dados por buenos.
 
+### Abrir el dashboard
+
+**Sin instalar nada:** [`dashboard/dashboard_riesgo_cmf.pdf`](dashboard/dashboard_riesgo_cmf.pdf)
+son las tres páginas exportadas, y las capturas de este README salen de ese mismo PDF.
+
+`dashboard/Proyecto CMF.pbix` está en **modo Importar**, no DirectQuery: son 2.460 filas y el
+archivo tiene que abrir aunque MySQL esté apagado. Para verlo no hace falta base de datos; para
+**actualizarlo** sí:
+
+- Conexión con un usuario de solo lectura, `pbi_lectura`, con `GRANT SELECT` únicamente sobre
+  `riesgo_bancario_cmf`. Un informe no necesita permisos de escritura.
+- En el diálogo de credenciales hay que usar la pestaña **Base de datos**, no *Windows*: MySQL no
+  habla autenticación integrada de Windows.
+- Requiere **MySQL Connector/NET 9.4.0**. Las versiones 9.5.0 y posteriores eliminaron el valor
+  `SSL Mode=None` que el conector nativo de Power BI sigue enviando, y la conexión falla con
+  `Requested value 'None' was not found`. Es un driver distinto de `mysql-connector-python`, el
+  que usan los scripts de Python: desinstalar uno no afecta al otro.
+
 ## Estructura
 
 ```
 ├── data/raw/morosidad/      Excel originales CMF (no versionados, nunca se modifican)
 ├── data/raw/provisiones/    Excel originales CMF (no versionados, nunca se modifican)
 ├── data/processed/          CSV consolidado y limpio
-├── scripts/                 descarga, verificación, consolidación y carga a MySQL
+├── scripts/                 descarga, verificación, consolidación, carga a MySQL
+│                            y validación del dashboard
 ├── sql/                     create_tables.sql (esquema + vista) y analisis_riesgo.sql
-├── dashboard/               archivo .pbix
-└── docs/                    alcance, perfilamiento, limitaciones, modelo de datos, hallazgos
+├── dashboard/               Proyecto CMF.pbix, el tema versionado y el PDF exportado
+└── docs/                    alcance, perfilamiento, limitaciones, modelo de datos,
+                             hallazgos, validación y capturas
 ```
 
 ## Stack
 
-Python (`pandas`, `requests`, `beautifulsoup4`, `openpyxl`) → MySQL → Power BI.
+Python (`pandas`, `requests`, `beautifulsoup4`, `openpyxl`) → MySQL → Power BI (DAX).
 
 ## Decisiones técnicas
 
@@ -160,6 +245,79 @@ por tamaño de cartera: ninguna de las dos fuentes publica saldos en pesos. Esta
 condiciona cómo se lee todo el análisis y está declarada en el dashboard, no solo en los
 documentos.
 
+**Toda medida DAX fija el segmento dentro del `CALCULATE`.** La vista trae los seis niveles de
+cartera y un `AVERAGE` sin filtrar mezcla el total con sus propias partes: el retail daba 6,86%
+en vez de 4,87% porque la vivienda de Ripley arrastraba el promedio. Es un error que **no da
+ningún mensaje** — la cifra sale, y sale mal. La única excepción es la medida de la página 3,
+donde el filtro se traslada de la medida al eje del visual.
+
+**La cobertura se promedia, no se recalcula: `AVERAGE(indice_cobertura)`, no
+`DIVIDE(provisiones, morosidad)`.** El índice ya viene calculado por banco-mes en la vista, y
+promedio de razones ≠ razón de promedios. La segunda forma daba 1,32 donde el valor correcto es
+1,34, y además rompía el contraste 1:1 contra el SQL.
+
+**El calendario de Power BI se genera con DAX, no se importa `dim_tiempo`.** DAX exige que la
+tabla marcada como *tabla de fechas* sea continua día por día, y `dim_tiempo` es mensual (41
+filas). Dos tablas de fechas en el mismo modelo generan ambigüedad de filtros, así que la
+mensual se excluye del modelo importado. Los límites del calendario se derivan de los datos con
+`MIN`/`MAX`, nunca escritos a mano. La contrapartida —que esa definición deja de estar versionada
+en SQL— está anotada en [`docs/modelo_datos.md`](docs/modelo_datos.md).
+
+**El último mes de la serie se deriva del dato, no del calendario.** El calendario DAX es continuo
+día por día y se extiende más allá de la última publicación de la CMF; ahí las medidas son
+`BLANK`. Una medida que tome `MAX(dim_calendario[fecha])` como "último mes" compara contra un mes
+vacío. La medida de variación de cobertura filtra primero los meses **con dato** y recién ahí toma
+el mínimo y el máximo — espejo exacto del `MAX(id_tiempo)` del SQL:
+
+```dax
+VAR meses_con_dato =
+    FILTER (
+        CALCULATETABLE ( VALUES ( dim_calendario[fecha] ), REMOVEFILTERS ( dim_calendario ) ),
+        NOT ISBLANK ( [Cobertura total colocaciones] )
+    )
+```
+
+**Las medidas de Portada y Comparativo fijan el segmento; las de Segmentación no.** Es deliberado:
+las dos primeras páginas comparan banco contra banco a nivel agregado, así que el segmento se fija
+en `CALCULATE`. La tercera página *es* la comparación entre segmentos, así que el filtro se
+traslada de la medida al eje del visual y se usa `KEEPFILTERS`. Una misma regla para las tres
+páginas obligaría a duplicar medidas o a mostrar cifras mezcladas.
+
+**Etiquetas en el idioma del negocio, modelo en la convención técnica.** En Power Query
+`tipo_institucion` se renombra a *Banca tradicional* / *Retail financiero*; en MySQL el modelo
+sigue en `snake_case`. El modelo mantiene la convención técnica, el dashboard habla el idioma de
+quien lo lee.
+
+**El estilo se aplica con un tema versionado, no formateando visual por visual.**
+`dashboard/tema_riesgo_cmf.json` está en el repo y se importa desde *Ver → Temas → Buscar temas*.
+La paleta se validó con un script de contraste y simulación de daltonismo: el **grupo** se codifica
+por temperatura (frío = banca tradicional, cálido = retail) y el **banco** por matiz dentro de su
+familia. Dos colores planos bastan en las barras, pero vuelven indistinguibles cinco series en un
+gráfico de líneas; la codificación por familia resuelve las dos cosas con un solo criterio.
+
+## Validación
+
+Cada cifra visible en el dashboard se contrastó contra el dato del que sale. No es un detalle de
+prolijidad: una medida DAX mal escrita o un filtro de visual de más producen un número plausible
+y silenciosamente falso, **sin ningún mensaje de error**.
+
+```bash
+python scripts/validar_dashboard.py    # 28 cifras · sale con código 1 si alguna no cuadra
+```
+
+| Cifra en pantalla | Cuántos valores | Resultado |
+|---|---|---|
+| Cobertura 2026 · retail / banca (Portada) | 2 | ✅ 1,37 / 1,09 |
+| Ranking may-2026 · mora, cobertura y variación (Comparativo) | 15 | ✅ uno a uno |
+| Cifras escritas a mano en el cuadro de hallazgo (Comparativo) | 4 | ✅ |
+| Brechas por cartera y morosidad en consumo (Segmentación) | 7 | ✅ |
+
+Esa validación encontró **tres defectos que en pantalla se veían bien**: una medida de variación
+que devolvía el valor inicial con signo negativo, un promedio de cobertura calculado como razón
+de promedios, y medidas sin filtro de segmento que mezclaban el total con sus propias partes. Los
+tres están explicados en [`docs/validacion.md`](docs/validacion.md), junto con el criterio de por
+qué unas cifras se comparan a mano y otras por script.
+
 ## Fuentes
 
 - [Indicador de morosidad de 90 días o más — CMF](https://www.cmfchile.cl/portal/estadisticas/617/w3-propertyvalue-28914.html)
@@ -168,3 +326,11 @@ documentos.
 ## Licencia
 
 MIT — ver [`LICENSE`](LICENSE). Los datos son de dominio público y pertenecen a la CMF.
+
+## Autor
+
+**Maximiliano Muñoz** — Analista Programador (INACAP), estudiante de Ingeniería Informática.
+
+- LinkedIn: [maximiliano-munoz-fuentes](https://www.linkedin.com/in/maximiliano-munoz-fuentes)
+- Portafolio: [Notion](https://atlantic-message-83c.notion.site/Maximiliano-Mu-oz-39df3c321fea807888aefa80ece9e316)
+- Otro proyecto: [portfolio-retail-financiero](https://github.com/maximunozf/portfolio-retail-financiero) — modelo relacional MySQL + dashboard Power BI

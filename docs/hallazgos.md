@@ -187,6 +187,33 @@ Falabella merece un matiz que el titular esconde: **bajó la mora y aun así per
 
 ---
 
+## Hallazgo 7 — Más mora no es menos cobertura
+
+Los dos indicadores no ordenan a los bancos igual. Foto a may-2026, `total_colocaciones`:
+*(consultas 4 y 12)*
+
+| Banco | Mora 90+ | Cobertura | Δ cobertura vs. ene-2023 |
+|---|---|---|---|
+| Ripley | **4,91%** | **1,60** | **+0,13** |
+| Falabella | 3,33% | 1,18 | −0,48 |
+| Santander-Chile | 2,95% | 1,07 | −0,25 |
+| BCI | 1,90% | **0,90** | −0,32 |
+| Banco de Chile | 1,63% | 1,29 | −0,53 |
+
+El banco con más morosidad de los cinco es el mejor cubierto y **el único que reforzó su
+cobertura** en el periodo; el único que provisiona bajo su propia cartera morosa es de los que
+menos mora tienen. Ripley lidera la cobertura de forma ininterrumpida desde may-2025 (13 meses).
+
+**Lectura:** morosidad y cobertura no son dos formas de medir lo mismo. La morosidad describe la
+cartera; la cobertura describe la **decisión** del banco frente a esa cartera. Un ranking de
+riesgo construido solo sobre morosidad ordena a estos cinco bancos casi al revés que uno
+construido sobre cobertura.
+
+Con la advertencia 5 en mano: esto no dice que Ripley sea más seguro que BCI. Dice que quien mira
+solo la mora está mirando la mitad del problema.
+
+---
+
 ## Lo que estos datos no permiten afirmar
 
 - **No es "el sistema bancario chileno".** Son 5 bancos de ~17 instituciones. Las
@@ -201,13 +228,20 @@ Falabella merece un matiz que el titular esconde: **bajó la mora y aun así per
 
 ---
 
-## Qué pasa al dashboard (Días 9-11)
+## Qué de esto llegó al dashboard
 
-| Página | Contenido | Fuente |
+Tres páginas, un hallazgo por página. Lo que no cabía en un titular quedó en este documento.
+
+| Página | Hallazgo que sostiene | Fuente |
 |---|---|---|
-| **Portada — el insight** | Las dos series de morosidad en un solo gráfico + tarjetas de cobertura por grupo. El texto del hallazgo, visible. | consultas 2 y 3 |
-| **Evolución y bancos** | Serie mensual por banco, variación mes a mes, pico/piso, meses bajo cobertura 1. | consultas 1, 7, 8, 9 |
-| **Segmentos** | Mora y cobertura por segmento con `nivel_agregacion` como filtro, más las dos advertencias de datos en la propia página. | consulta 5 |
+| **Portada** | *"Los dos grupos se mueven en direcciones opuestas"* — hallazgos 1 y 2 | consultas 2 y 3 |
+| **Comparativo** | *"Más mora no es menos cobertura"* — hallazgos 3 y 7 | consultas 4, 7 y 12 |
+| **Segmentación** | *"El total engaña: solo en consumo el retail alcanzó a la banca"* — hallazgos 4 y 5 | consulta 5 |
 
-Regla para el dashboard: **la nota sobre promedios simples y sobre índices-no-montos va
-impresa en la portada**, no escondida en un tooltip.
+Los hallazgos 6 y el detalle de las advertencias **no** están en el dashboard. Un informe que
+intenta contener todo el análisis deja de tener un mensaje. La regla fue: cada página defiende una
+sola afirmación, y lo que no la defiende se saca.
+
+Lo que sí va impreso en las tres páginas, no escondido en un tooltip: **la nota de que son índices
+porcentuales y no montos, y de que los promedios entre bancos son simples, no ponderados**. Es la
+limitación que condiciona cómo se lee todo lo demás.

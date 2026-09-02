@@ -1,0 +1,176 @@
+{
+  "name": "Riesgo Bancario CMF",
+  "dataColors": [
+    "#2A78D6",
+    "#EB6834",
+    "#1BAF7A",
+    "#EDA100",
+    "#E87BA4",
+    "#008300",
+    "#4A3AA7",
+    "#E34948"
+  ],
+  "background": "#FFFFFF",
+  "backgroundLight": "#F9F9F7",
+  "backgroundNeutral": "#E1E0D9",
+  "foreground": "#0B0B0B",
+  "foregroundNeutralSecondary": "#52514E",
+  "foregroundNeutralTertiary": "#898781",
+  "tableAccent": "#2A78D6",
+  "good": "#0CA30C",
+  "neutral": "#898781",
+  "bad": "#D03B3B",
+  "maximum": "#0D366B",
+  "center": "#F0EFEC",
+  "minimum": "#CDE2FB",
+  "textClasses": {
+    "callout": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 28,
+      "color": "#0B0B0B"
+    },
+    "title": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 12,
+      "color": "#0B0B0B"
+    },
+    "header": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 10,
+      "color": "#52514E"
+    },
+    "label": {
+      "fontFace": "Segoe UI",
+      "fontSize": 9,
+      "color": "#52514E"
+    }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [
+          {
+            "show": true,
+            "color": { "solid": { "color": "#FFFFFF" } },
+            "transparency": 0
+          }
+        ],
+        "border": [
+          {
+            "show": true,
+            "color": { "solid": { "color": "#E1E0D9" } },
+            "radius": 6
+          }
+        ],
+        "dropShadow": [{ "show": false }],
+        "visualHeader": [{ "show": false }],
+        "subTitle": [{ "show": false }],
+        "title": [
+          {
+            "alignment": "left",
+            "fontColor": { "solid": { "color": "#0B0B0B" } },
+            "fontSize": 12,
+            "fontFamily": "Segoe UI Semibold",
+            "background": { "solid": { "color": "#FFFFFF" } }
+          }
+        ],
+        "categoryAxis": [
+          {
+            "showAxisTitle": false,
+            "gridlineShow": false,
+            "labelColor": { "solid": { "color": "#898781" } },
+            "fontSize": 9,
+            "fontFamily": "Segoe UI",
+            "lineColor": { "solid": { "color": "#C3C2B7" } }
+          }
+        ],
+        "valueAxis": [
+          {
+            "showAxisTitle": false,
+            "gridlineShow": true,
+            "gridlineColor": { "solid": { "color": "#E1E0D9" } },
+            "gridlineThickness": 1,
+            "gridlineStyle": "solid",
+            "labelColor": { "solid": { "color": "#898781" } },
+            "fontSize": 9,
+            "fontFamily": "Segoe UI"
+          }
+        ],
+        "legend": [
+          {
+            "position": "TopCenter",
+            "showTitle": false,
+            "labelColor": { "solid": { "color": "#52514E" } },
+            "fontSize": 10,
+            "fontFamily": "Segoe UI"
+          }
+        ],
+        "labels": [
+          {
+            "color": { "solid": { "color": "#52514E" } },
+            "fontSize": 9,
+            "fontFamily": "Segoe UI"
+          }
+        ]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [
+          {
+            "color": { "solid": { "color": "#ECECE7" } },
+            "transparency": 0
+          }
+        ],
+        "outspace": [
+          {
+            "color": { "solid": { "color": "#ECECE7" } },
+            "transparency": 0
+          }
+        ]
+      }
+    },
+    "card": {
+      "*": {
+        "labels": [
+          {
+            "color": { "solid": { "color": "#0B0B0B" } },
+            "fontSize": 32,
+            "fontFamily": "Segoe UI Semibold"
+          }
+        ],
+        "categoryLabels": [
+          {
+            "show": true,
+            "color": { "solid": { "color": "#52514E" } },
+            "fontSize": 10,
+            "fontFamily": "Segoe UI"
+          }
+        ]
+      }
+    },
+    "lineChart": {
+      "*": {
+        "lineStyles": [
+          {
+            "strokeWidth": 2,
+            "lineStyle": "solid",
+            "showMarker": false
+          }
+        ]
+      }
+    },
+    "textbox": {
+      "*": {
+        "background": [{ "show": false }],
+        "border": [{ "show": false }]
+      }
+    },
+    "shape": {
+      "*": {
+        "background": [{ "show": false }],
+        "border": [{ "show": false }]
+      }
+    }
+  }
+}

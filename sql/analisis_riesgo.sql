@@ -309,3 +309,81 @@ SELECT
         / SQRT((COUNT(*)*SUM(dx*dx) - POW(SUM(dx),2)) * (COUNT(*)*SUM(dy*dy) - POW(SUM(dy),2))), 3)
 FROM con_variacion
 WHERE dx IS NOT NULL;
+
+
+-- ---------------------------------------------------------------------------
+-- 11. VALIDACION CRUZADA — tarjetas KPI de la portada del dashboard.
+--
+-- Este bloque y el 12 no aportan hallazgos: existen para probar que las cifras
+-- que se ven en el .pbix salen de estos datos y con esta misma logica. Una
+-- medida DAX mal escrita o un filtro de visual de mas devuelven un numero
+-- plausible SIN dar ningun error; el unico modo de detectarlo es contrastarlo.
+--
+-- Reproduce [Cobertura total colocaciones] con filtro de visual anio = 2026,
+-- desglosada por tipo_institucion.
+-- Esperado en pantalla: retail_financiero 1,37 · banca_tradicional 1,09
+--
+-- Por que AVG(indice_cobertura) y no SUM(prov)/SUM(mora): el indice ya viene
+-- calculado por banco-mes en la vista, y promedio de razones no es igual a
+-- razon de promedios (daba 1,32 donde el valor correcto es 1,34). La medida
+-- DAX usa AVERAGE, asi que promediar aca es lo unico que hace valido el cruce.
+--
+-- Por que se filtra el segmento: la vista trae los 6 niveles y un promedio sin
+-- filtrar mezcla el total con sus propias partes. Es el mismo filtro que la
+-- medida DAX lleva dentro del CALCULATE.
+--
+-- Las columnas de control estan para que el numero no quede sin auditar:
+-- meses = 5 deja escrito que 2026 es un año parcial (ene-may), no doce meses,
+-- y filas_con_cobertura < filas delataria una tarjeta promediando menos meses
+-- de los que declara.
+-- ---------------------------------------------------------------------------
+SELECT
+    tipo_institucion,
+    ROUND(AVG(indice_cobertura), 2)  AS cobertura_promedio_2026,
+    ROUND(AVG(morosidad_90d), 2)     AS morosidad_promedio_2026,
+    COUNT(*)                         AS filas,
+    COUNT(indice_cobertura)          AS filas_con_cobertura,
+    COUNT(DISTINCT anio_mes)         AS meses,
+    COUNT(DISTINCT codigo_banco)     AS bancos
+FROM vw_riesgo_ancho
+WHERE codigo_segmento = 'total_colocaciones'
+  AND anio = 2026
+GROUP BY tipo_institucion
+ORDER BY cobertura_promedio_2026;
+-- Validado 01-sep-2026: banca 1.09 / 2.23 (15 filas, 3 bancos, 5 meses)
+--                       retail 1.37 / 4.24 (10 filas, 2 bancos, 5 meses)
+--                       filas_con_cobertura = filas en ambos: cero nulos.
+
+
+-- ---------------------------------------------------------------------------
+-- 12. VALIDACION CRUZADA — ranking del ultimo mes, pagina `Comparativo`.
+--
+-- Reproduce las medidas [Morosidad ultimo mes] y [Cobertura ultimo mes].
+--
+-- El mes NO se escribe a mano: se deriva con MAX(id_tiempo), igual que la
+-- medida DAX lo deriva con MAX(fecha) + REMOVEFILTERS(). Al cargar junio, esta
+-- consulta y el dashboard se mueven juntos; con '2026-05' literal, no.
+--
+-- Aca se lee el valor directo de la vista en vez de promediarlo: en un solo mes
+-- hay exactamente una fila por banco, asi que el AVERAGE de la medida DAX opera
+-- sobre una fila y devuelve esa misma fila. Promediar seria ruido.
+-- ---------------------------------------------------------------------------
+WITH ultimo_mes AS (
+    SELECT MAX(id_tiempo) AS id_tiempo
+    FROM vw_riesgo_ancho
+    WHERE codigo_segmento = 'total_colocaciones'
+)
+SELECT
+    v.anio_mes,
+    v.nombre_banco,
+    v.tipo_institucion,
+    ROUND(v.morosidad_90d, 2)    AS morosidad_90d,
+    ROUND(v.indice_cobertura, 2) AS indice_cobertura
+FROM vw_riesgo_ancho v
+JOIN ultimo_mes u
+  ON v.id_tiempo = u.id_tiempo
+WHERE v.codigo_segmento = 'total_colocaciones'
+ORDER BY v.morosidad_90d DESC;   -- para validar el 2do visual: ORDER BY indice_cobertura ASC
+-- Validado 01-sep-2026, may-2026:
+--   morosidad  Ripley 4.91 · Falabella 3.33 · Santander 2.95 · BCI 1.90 · Chile 1.63
+--   cobertura  BCI 0.90 · Santander 1.07 · Falabella 1.18 · Chile 1.29 · Ripley 1.60

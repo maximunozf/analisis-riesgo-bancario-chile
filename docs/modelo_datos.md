@@ -171,3 +171,57 @@ consulte creyendo que está completa.
 El último chequeo es el más fuerte: compara la suma de todos los valores en la base
 contra la del CSV de origen. Detecta filas perdidas, duplicadas o truncadas por el
 `DECIMAL(9,6)`, cosas que un simple `COUNT(*)` correcto no descartaría.
+
+---
+
+## El calendario en Power BI: por qué hay dos y no uno
+
+`dim_tiempo` es **mensual**: 41 filas, una por mes, con la fecha del primer día. Ese es el
+grano real de la fuente —la CMF publica una vez al mes— y en el modelo relacional cumple
+dos funciones que ninguna tabla generada al vuelo puede cumplir: es el destino de una clave
+foránea desde la tabla de hechos, y garantiza que no existan meses sin fila.
+
+Power BI, en cambio, exige que la tabla que se marca como *tabla de fechas* tenga una
+**columna de fechas continua día por día**. Con un calendario mensual la validación falla
+con "la columna de fecha no puede tener intervalos vacíos". No es un defecto del modelo: es
+un requisito del motor de inteligencia de tiempo de DAX, que necesita poder recorrer días
+para resolver `DATEADD`, `SAMEPERIODLASTYEAR` o `DATESYTD`.
+
+**Decisión:** el calendario diario se genera **dentro de Power BI** con DAX y `dim_tiempo`
+se excluye del modelo importado.
+
+```dax
+dim_calendario =
+VAR fecha_min = MIN( vw_riesgo_ancho[fecha] )
+VAR fecha_max = EOMONTH( MAX( vw_riesgo_ancho[fecha] ), 0 )
+RETURN
+SELECTCOLUMNS(
+    CALENDAR( fecha_min, fecha_max ),
+    "fecha",      [Date],
+    "anio",       YEAR( [Date] ),
+    "mes",        MONTH( [Date] ),
+    "nombre_mes", FORMAT( [Date], "mmmm" ),
+    "anio_mes",   FORMAT( [Date], "yyyy-MM" ),
+    "trimestre",  "T" & QUARTER( [Date] )
+)
+```
+
+Relación: `dim_calendario[fecha]` → `vw_riesgo_ancho[fecha]`, uno a muchos. Solo 41 de las
+~1.250 fechas del calendario tienen hechos asociados; el resto existe únicamente para que
+la serie sea continua.
+
+Tres detalles deliberados:
+
+- **Los límites se derivan de los datos, no se escriben a mano.** `MIN`/`MAX` sobre la
+  vista más `EOMONTH` para cerrar en el último día del mes final. Si mañana se agregan los
+  meses de junio 2026 en adelante, el calendario se extiende solo. Una fecha literal en el
+  código sería una bomba de tiempo.
+- **`anio_mes` en formato `yyyy-MM`** ordena alfabéticamente igual que cronológicamente, así
+  que no necesita una columna de ordenamiento auxiliar.
+- **`dim_tiempo` no se importa a Power BI.** Dos tablas de fechas en un mismo modelo generan
+  ambigüedad de filtros y confunden a quien lo abra. Su rol —integridad referencial y
+  calendario sin huecos— pertenece a MySQL, no al informe.
+
+La contrapartida honesta de esta decisión es que la definición del calendario deja de estar
+versionada en SQL y pasa a vivir dentro del `.pbix`. Por eso el código DAX queda escrito
+aquí: quien clone el repositorio puede reconstruirlo sin abrir el archivo binario.
