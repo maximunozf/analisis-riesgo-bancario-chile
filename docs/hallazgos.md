@@ -16,9 +16,9 @@ cada sección indica qué consulta la produce.
 > 1,34 a 1,09. En el mismo periodo el retail financiero bajó su morosidad de 4,87% a 4,24%
 > manteniendo la cobertura estable en torno a 1,37.
 >
-> **La brecha entre ambos se cerró de un máximo de 3,5 puntos porcentuales (mar-2024) a
-> 2,0 pp — pero no porque el retail se pareciera a la banca, sino porque la banca se acercó
-> al retail.**
+> **La brecha entre ambos se cerró de 3,17 a 2,01 puntos porcentuales en promedios anuales
+> —su máximo mensual fue 3,46 pp en mar-2024— pero no porque el retail se pareciera a la
+> banca, sino porque la banca se acercó al retail.**
 
 La correlación de las dos series mensuales de morosidad es **−0,19** en niveles y **+0,20**
 en variaciones mes a mes: prácticamente no hay relación. No es un ciclo de crédito común
@@ -95,7 +95,7 @@ la portada del dashboard lleva las dos series, no la resta.
 
 ---
 
-## Hallazgo 3 — Dos de los tres bancos tradicionales provisionan bajo su propia mora
+## Hallazgo 3 — Un banco tradicional provisiona bajo su propia mora de forma sostenida, y otro lo hizo por tramos
 
 Cobertura promedio anual por banco: *(consultas 6 y 7)*
 
@@ -110,6 +110,11 @@ Cobertura promedio anual por banco: *(consultas 6 y 7)*
 - **BCI** lleva **25 de 41 meses** con cobertura bajo 1 (desde may-2024, mínimo 0,823).
 - **Santander-Chile**, 9 meses bajo 1, todos entre may-2024 y ene-2026 (mínimo 0,905).
 - **Ripley es el único banco de los cinco cuya cobertura sube** en el periodo.
+
+El promedio anual de Santander-Chile nunca baja de 1 (1,01 · 1,04 · 1,06): sus nueve meses bajo
+esa línea se compensan dentro del mismo año. De ahí la distinción del titular entre *sostenido* y
+*por tramos* — el promedio anual y el conteo mensual responden preguntas distintas, y una tabla
+anual sola habría escondido esos nueve meses.
 
 Con la advertencia 5 en mano: esto no dice que BCI esté sub-provisionado —dice que la
 distancia entre su stock de provisiones y su cartera morosa se dio vuelta a mediados de

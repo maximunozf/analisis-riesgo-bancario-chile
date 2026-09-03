@@ -5,8 +5,8 @@
 > está mal escrita, o el visual arrastra un filtro que no debería tener.
 
 Esto no es prolijidad. Una medida DAX mal escrita **no da ningún mensaje de error**: devuelve un
-número plausible y silenciosamente falso. Los tres defectos de la sección 5 son exactamente eso —
-los tres se veían bien en pantalla.
+número plausible y silenciosamente falso. Los tres primeros defectos de la sección 5 son
+exactamente eso — los tres se veían bien en pantalla. El cuarto es del control mismo.
 
 ---
 
@@ -71,14 +71,36 @@ las cubre:
 
 ### Segmentación
 
-| Cifra en pantalla | Valor | Resultado |
-|---|---|---|
-| Mora consumo retail · 2023 → 2026 | 4,04 % → 2,54 % | ✅ |
-| Mora consumo banca · 2023 → 2026 | 2,16 % → 2,22 % | ✅ |
-| Brecha may-2026 · comerciales | 11,62 pp | ✅ |
-| Brecha may-2026 · consumo | 0,36 pp | ✅ |
-| Brecha may-2026 · vivienda | 13,68 pp | ✅ |
-| Múltiplos pequeños por cartera | 3 carteras × 2 grupos × 41 meses | ✅ por script |
+Esta página convive con **dos bases de cálculo** y hay que decir cuál es cuál: el gráfico de
+brechas termina en el **último mes publicado**, y el cuadro de texto cita **promedios anuales**.
+La brecha de consumo es 0,36 pp en may-2026 y 0,32 pp en promedio 2026: las dos ciertas. Comparar
+una contra la otra hace ver un defecto donde solo hay dos preguntas distintas.
+
+| Cifra en pantalla | Base | Valor | Resultado |
+|---|---|---|---|
+| Mora consumo retail · 2023 → 2026 (cuadro de texto) | promedio anual | 4,04 % → 2,54 % | ✅ |
+| Mora consumo banca · 2023 → 2026 (cuadro de texto) | promedio anual | 2,16 % → 2,22 % | ✅ |
+| Brecha comerciales · último punto del gráfico | may-2026 | 11,62 pp | ✅ |
+| Brecha consumo · último punto del gráfico | may-2026 | 0,36 pp | ✅ |
+| Brecha vivienda · último punto del gráfico | may-2026 | 13,68 pp | ✅ |
+| Series de brecha y de morosidad por cartera | 41 meses | 3 carteras × 2 grupos | ✅ por script |
+
+### Los cuadros de texto de Portada y Segmentación
+
+Un cuadro de texto envejece igual que una medida: se escribe a mano, se edita a mano y ningún
+control de Power BI lo recalcula. En la página `Comparativo` esas cifras ya se verificaban una a
+una; en las otras dos no, y son 16.
+
+| Cuadro de texto | Base | Cifras | Resultado |
+|---|---|---|---|
+| Portada · mora y cobertura por grupo, 2023 → 2026 | promedio anual | 8 | ✅ |
+| Segmentación · brechas de consumo, vivienda y del total | promedio anual | 6 | ✅ |
+| Segmentación · brecha de comerciales, citada como rango "~9-11" | promedio anual | 2 | ✅ 9,42 – 11,06 |
+
+La de comerciales se valida distinto porque el informe no cita un valor sino un rango: lo que se
+comprueba es que los dos extremos de la serie anual sigan cayendo dentro de él. Y las cifras que el
+informe escribe con un decimal (7,2 · 13,8) se comparan con un decimal: exigirle dos a un número
+redondeado a uno marcaría un defecto inexistente.
 
 ---
 
@@ -101,9 +123,10 @@ se recarga. Validar contra una base distinta a la que alimentó el `.pbix` da fa
 python scripts/validar_dashboard.py
 ```
 
-El script recalcula desde `data/processed/consolidado_cmf.csv` las 15 cifras de la página
-`Comparativo`, los 2 KPI de la portada y las 5 cifras de segmentación, y las compara contra los
-valores que están escritos en pantalla. Devuelve código de salida distinto de 0 si alguna no
+El script recalcula desde `data/processed/consolidado_cmf.csv` las **44 cifras** del informe —15
+del ranking de `Comparativo`, 2 KPI y 8 del cuadro de texto de la portada, 7 de segmentación, 8 de
+su cuadro de texto y 4 del cuadro de hallazgo— y las compara contra los valores escritos en
+pantalla, cada una contra su propia base. Devuelve código de salida distinto de 0 si alguna no
 cuadra, así que sirve como chequeo antes de publicar una versión nueva del informe.
 
 Deliberadamente **no** lee MySQL: valida contra el CSV consolidado, que es el archivo del que
@@ -133,6 +156,17 @@ correcta 1,34. La diferencia es chica y por eso es peligrosa — pasa por error 
 La vista trae los seis niveles de cartera; un `AVERAGE` sin `CALCULATE(..., codigo_segmento =
 "total_colocaciones")` promediaba el total junto a comerciales, consumo y vivienda. El retail daba
 6,86 % de morosidad en vez de 4,87 % porque la vivienda residual de Ripley arrastraba el promedio.
+
+**4 · El propio control tenía un punto ciego: los cuadros de texto.** La primera versión validaba
+28 cifras y ninguna era de los cuadros de texto de Portada y Segmentación, que citan promedios
+anuales. Peor: la tabla de esta sección rotulaba "cifra en pantalla" a las brechas del último mes,
+que **no** son las que están escritas en la página. Cualquiera que comparara este documento con la
+captura veía 0,36 donde la página dice 0,32 y concluía que la validación fallaba. No había error de
+cálculo —las dos cifras son correctas— sino un rótulo que ocultaba que eran dos bases distintas.
+Corregido declarando la base de cada cifra y sumando las 16 de los cuadros de texto al script.
+
+> *Un número correcto con la base mal rotulada es indistinguible de un número mal calculado, para
+> quien lo lee desde afuera.*
 
 ---
 

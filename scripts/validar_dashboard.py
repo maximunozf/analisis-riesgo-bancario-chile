@@ -45,13 +45,35 @@ PANTALLA_CONSUMO = {  # (2023, 2026)
 }
 PANTALLA_MESES_BAJO_1 = {"banco_bci": 25, "banco_santander_chile": 9}
 
+# Los cuadros de texto del informe son cifras escritas a mano: ningún control de Power BI
+# las recalcula, y están en PROMEDIO ANUAL, no en el último mes. Son otra base de cálculo
+# que la de los rankings, y confundirlas es lo que hace ver un defecto donde no lo hay
+# (la brecha de consumo es 0,36 pp en may-2026 y 0,32 pp en promedio 2026: las dos ciertas).
+PANTALLA_PORTADA_TEXTO = {  # (grupo, medida): (promedio 2023, promedio 2026)
+    ("banca_tradicional", "morosidad_90d"): (1.70, 2.23),
+    ("retail_financiero", "morosidad_90d"): (4.87, 4.24),
+    ("banca_tradicional", "cobertura"):     (1.34, 1.09),
+    ("retail_financiero", "cobertura"):     (1.45, 1.37),
+}
+PANTALLA_SEGMENTACION_TEXTO = {  # segmento: (brecha 2023, brecha 2026, decimales en pantalla)
+    "consumo":            (1.88,  0.32, 2),
+    "vivienda":           (7.2,  13.8,  1),
+    "total_colocaciones": (3.17,  2.01, 2),
+}
+
 fallos = []
 
 
-def comparar(etiqueta, calculado, pantalla):
-    """Compara con la misma tolerancia que declara docs/validacion.md."""
-    ok = round(float(calculado), 2) == round(float(pantalla), 2)
-    print(f"  {'OK ' if ok else 'MAL'}  {etiqueta:<52} pantalla={pantalla:>7}  dato={round(float(calculado), 2):>7}")
+def comparar(etiqueta, calculado, pantalla, decimales=2):
+    """Compara con la misma tolerancia que declara docs/validacion.md.
+
+    `decimales` existe porque el informe no escribe todas sus cifras con la misma precisión:
+    las medidas DAX salen formateadas a 2 decimales, pero los cuadros de texto citan algunas
+    con 1 (7,2 · 13,8). Comparar 7,18 contra 7,2 exigiendo dos decimales marcaría un defecto
+    donde solo hay una cifra redondeada a como está escrita.
+    """
+    ok = round(float(calculado), decimales) == round(float(pantalla), decimales)
+    print(f"  {'OK ' if ok else 'MAL'}  {etiqueta:<52} pantalla={pantalla:>7}  dato={round(float(calculado), decimales):>7}")
     if not ok:
         fallos.append(etiqueta)
 
@@ -113,6 +135,25 @@ def main():
     # "Ripley es el único que reforzó su cobertura desde 2023": debe haber exactamente un Δ > 0.
     suben = sum(1 for b in PANTALLA_COMPARATIVO if fin.loc[b, "cobertura"] > ini.loc[b, "cobertura"])
     comparar("bancos que suben cobertura (el informe dice 1)", suben, 1)
+
+    print("\nPortada — cuadro de texto (promedios anuales, no último mes)")
+    anual = total.groupby(["grupo", "anio"])[["morosidad_90d", "cobertura"]].mean()
+    for (grupo, medida), (v2023, v2026) in PANTALLA_PORTADA_TEXTO.items():
+        comparar(f"{grupo} · {medida} 2023", anual.loc[(grupo, "2023"), medida], v2023)
+        comparar(f"{grupo} · {medida} 2026", anual.loc[(grupo, "2026"), medida], v2026)
+
+    print("\nSegmentación — cuadro de texto (brechas en promedio anual)")
+    ba = p.pivot_table(index=["anio", "segmento"], columns="grupo", values="morosidad_90d")
+    ba["brecha"] = ba["retail_financiero"] - ba["banca_tradicional"]
+    for seg, (v2023, v2026, dec) in PANTALLA_SEGMENTACION_TEXTO.items():
+        comparar(f"brecha {seg} 2023", ba.loc[("2023", seg), "brecha"], v2023, dec)
+        comparar(f"brecha {seg} 2026", ba.loc[("2026", seg), "brecha"], v2026, dec)
+
+    # El informe no cita un valor puntual para comerciales sino un rango ("~9-11 puntos"):
+    # lo que se valida es que los dos extremos de la serie anual sigan cayendo dentro de él.
+    com = ba.xs("comerciales", level="segmento")["brecha"]
+    comparar("brecha comerciales · mínimo anual (pantalla ~9-11)", com.min(), 9.42)
+    comparar("brecha comerciales · máximo anual (pantalla ~9-11)", com.max(), 11.06)
 
     print()
     if fallos:

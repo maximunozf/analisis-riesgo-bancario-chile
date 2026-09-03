@@ -25,15 +25,22 @@ posturas de riesgo completamente distintas según cuánto provisionen.
 > **Los dos grupos se movieron en direcciones opuestas.** Entre enero de 2023 y mayo de
 > 2026 la morosidad de la banca tradicional subió de 1,70% a 2,23% y su cobertura cayó de
 > 1,34 a 1,09. En el mismo período el retail financiero **bajó** su morosidad de 4,87% a
-> 4,24% manteniendo la cobertura estable en torno a 1,37.
+> 4,24%, y su cobertura cedió solo 0,08 (1,45 → 1,37): un tercio de lo que perdió la banca,
+> y estable en 1,37 desde 2024.
 >
-> La brecha entre ambos se cerró de 3,5 a 2,0 puntos porcentuales, pero no porque el retail
-> se pareciera a la banca: porque la banca se acercó al retail.
+> La brecha entre ambos se cerró de **3,17 a 2,01 puntos porcentuales**, pero no porque el
+> retail se pareciera a la banca: porque la banca se acercó al retail.
 
 | | Banca tradicional | Retail financiero |
 |---|---|---|
 | Morosidad 90+ · 2023 → 2026 | 1,70% → **2,23%** | 4,87% → **4,24%** |
 | Cobertura · 2023 → 2026 | 1,34 → **1,09** | 1,45 → **1,37** |
+
+Todas las cifras de arriba son **promedios anuales**, y la brecha de 3,17 → 2,01 pp es esa misma
+tabla restada — la misma base que usa el dashboard. Medida mes a mes la brecha cuenta lo mismo con
+otros números: parte en 2,67 pp (ene-2023), llega a su **máximo de 3,46 pp en marzo de 2024** y
+cierra en 1,96 pp (may-2026). Las dos bases conviven en el proyecto y cada cifra dice cuál usa,
+porque un promedio anual y un mes puntual no son intercambiables.
 
 La correlación entre las dos series mensuales de morosidad es **−0,19**: no es un ciclo de
 crédito común empujando a los cinco bancos, son dos trayectorias distintas.
@@ -94,11 +101,18 @@ El mes del ranking no está escrito a mano en ningún filtro: se deriva de los d
 
 ![Página Segmentación](docs/capturas/03_segmentacion.png)
 
-Morosidad por tipo de cartera con múltiplos pequeños y **eje Y compartido**. La escala común es
-una decisión, no un descuido: el hallazgo de la página es una comparación de *brechas*, y solo
-con eje compartido la distancia entre las dos líneas significa lo mismo en los tres paneles. Ahí
-se ve que en comerciales y vivienda hay un abismo entre retail y banca, y que **en consumo las
-dos líneas casi se tocan**.
+Arriba, la **brecha** de morosidad —retail menos banca— de las tres carteras en un mismo eje. Es
+el visual que sostiene el titular, porque compara *distancias*, y una distancia solo significa lo
+mismo en las tres carteras si comparten escala. Abajo, la morosidad de cada grupo cartera por
+cartera, en tres gráficos separados **con eje Y propio**.
+
+La escala independiente de esos tres paneles es una decisión: los múltiplos pequeños de Power BI
+fuerzan un eje común entre paneles, y con vivienda llegando a 16% y consumo sin pasar de 4%, la
+escala compartida aplasta contra el piso justamente el panel donde está el hallazgo. Separarlos
+deja ver la forma de cada cartera; la comparación de magnitudes ya quedó resuelta arriba. El costo
+—que los tres paneles de abajo no se pueden comparar entre sí a ojo— está asumido, y por eso el
+titular de la página no se apoya en ninguno de ellos. Ahí se ve que en comerciales y vivienda hay
+un abismo entre retail y banca, y que **en consumo las dos líneas casi se tocan**.
 
 Se muestran solo las carteras hoja (comerciales, consumo, vivienda). Los agregados quedan fuera:
 un total junto a sus propias partes en el mismo eje invita a sumarlos, que es exactamente lo que
@@ -312,21 +326,34 @@ prolijidad: una medida DAX mal escrita o un filtro de visual de más producen un
 y silenciosamente falso, **sin ningún mensaje de error**.
 
 ```bash
-python scripts/validar_dashboard.py    # 28 cifras · sale con código 1 si alguna no cuadra
+python scripts/validar_dashboard.py    # 44 cifras · sale con código 1 si alguna no cuadra
 ```
 
-| Cifra en pantalla | Cuántos valores | Resultado |
-|---|---|---|
-| Cobertura 2026 · retail / banca (Portada) | 2 | ✅ 1,37 / 1,09 |
-| Ranking may-2026 · mora, cobertura y variación (Comparativo) | 15 | ✅ uno a uno |
-| Cifras escritas a mano en el cuadro de hallazgo (Comparativo) | 4 | ✅ |
-| Brechas por cartera y morosidad en consumo (Segmentación) | 7 | ✅ |
+| Cifra en pantalla | Base | Cuántos valores | Resultado |
+|---|---|---|---|
+| Cobertura 2026 · retail / banca (Portada) | promedio anual | 2 | ✅ 1,37 / 1,09 |
+| Ranking may-2026 · mora, cobertura y variación (Comparativo) | último mes | 15 | ✅ uno a uno |
+| Cifras escritas a mano en el cuadro de hallazgo (Comparativo) | serie completa | 4 | ✅ |
+| Brechas por cartera y morosidad en consumo (Segmentación) | último mes y anual | 7 | ✅ |
+| Cuadro de texto de la Portada (mora y cobertura por grupo) | promedio anual | 8 | ✅ |
+| Cuadro de texto de Segmentación (brechas por cartera y del total) | promedio anual | 8 | ✅ |
+
+La columna **Base** no es decorativa: los rankings muestran el último mes publicado y los cuadros
+de texto citan promedios anuales. La brecha de consumo es 0,36 pp en may-2026 y 0,32 pp en promedio
+2026 — las dos ciertas, y confundirlas hace ver un defecto donde no lo hay. Cada cifra validada
+declara con qué base se comparó.
 
 Esa validación encontró **tres defectos que en pantalla se veían bien**: una medida de variación
 que devolvía el valor inicial con signo negativo, un promedio de cobertura calculado como razón
 de promedios, y medidas sin filtro de segmento que mezclaban el total con sus propias partes. Los
 tres están explicados en [`docs/validacion.md`](docs/validacion.md), junto con el criterio de por
 qué unas cifras se comparan a mano y otras por script.
+
+Una segunda pasada, esta vez sobre el control mismo, encontró un cuarto: las **16 cifras escritas
+a mano en los cuadros de texto** de la Portada y de Segmentación quedaban fuera del script, y
+estaban en promedio anual mientras el validador comparaba contra el último mes. Un texto
+interpretativo envejece igual que una medida —se edita a mano y nadie lo recalcula—, así que ahora
+también entra al control: las 44 cifras se recalculan desde el CSV, cada una contra su propia base.
 
 ## Fuentes
 
