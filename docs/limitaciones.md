@@ -70,16 +70,23 @@ pero la reproducción desde cero sí se vería afectada.
 
 ## 7. Resultado de la validación de completitud (Día 4)
 
-El consolidado se validó contra la matriz esperada antes de darlo por bueno:
+El consolidado se validó contra la matriz esperada antes de darlo por bueno. **Esta tabla no
+está escrita a mano: es la salida de `validar_completitud()` y `validar_calidad()` dentro de
+`scripts/consolidar_datos_cmf.py`**, y se reproduce corriendo el script.
 
-| Chequeo | Resultado |
-|---|---|
-| Filas | **2.460** = 5 bancos × 41 meses × 6 segmentos × 2 indicadores |
-| Duplicados de clave (`periodo`+`banco`+`indicador`+`segmento`) | 0 |
-| Meses continuos entre ene-2023 y may-2026 | sí, sin huecos |
-| Valores negativos o superiores a 100% | 0 |
-| Nulos | 164, **todos estructurales** (ver sección 8) |
-| Cobertura de meses entre ambos indicadores | idéntica |
+| Chequeo | Resultado | Quién lo produce |
+|---|---|---|
+| Filas | **2.460** = 5 bancos × 41 meses × 6 segmentos × 2 indicadores | `validar_completitud()` |
+| Duplicados de clave (`periodo`+`banco`+`indicador`+`segmento`) | 0 | `validar_calidad()` |
+| Meses continuos entre ene-2023 y may-2026 | sí, sin huecos (41 meses) | `validar_calidad()` |
+| Valores negativos o superiores a 100% | 0 | `validar_calidad()` |
+| Nulos | 164, **todos estructurales** (ver sección 8) | `validar_completitud()` |
+| Cobertura de meses entre ambos indicadores | idéntica | `validar_completitud()` |
+
+La distinción importa: una tabla de calidad escrita a mano en un documento afirma; una que
+sale del script se puede volver a correr y contradecir. Con `--estricto` los tres chequeos de
+calidad devuelven código de salida 1 si fallan, de modo que el CSV no puede avanzar hacia
+MySQL ni al dashboard con un duplicado o un hueco adentro.
 
 Dos errores encontrados y corregidos en esta etapa, ambos silenciosos:
 
@@ -93,6 +100,24 @@ Dos errores encontrados y corregidos en esta etapa, ambos silenciosos:
 - **La hoja de provisiones se llama `"CUADRO N°1 "`, con un espacio final.** El script ya
   no exige coincidencia exacta: resuelve el nombre de hoja comparando en forma
   normalizada, lo que además lo hace tolerante a mayúsculas y tildes.
+
+El primero de esos dos errores dejó una lección que ya no depende de que alguien la recuerde:
+**si la CMF vuelve a insertar una columna, el script se detiene solo.** Cada índice de
+columna declara ahora el token que debe aparecer en su encabezado
+(`TOKENS_ENCABEZADO_MOROSIDAD` / `TOKENS_ENCABEZADO_PROVISIONES`), y antes de leer un solo
+valor se confirma que la columna sea la que dice ser. Si no lo es, el proceso aborta con
+código de salida 1 y nombra la columna que se corrió, en vez de escribir un CSV de números
+plausibles y falsos. El bloque de encabezado se delimita solo —es todo lo que está por
+encima de la primera fila de banco—, así que el control no reintroduce la dependencia de un
+número fijo de filas que el Hallazgo #3 había eliminado.
+
+Queda una advertencia honesta sobre el alcance de estos controles: verifican que el CSV sea
+internamente consistente y que las columnas sean las que dicen ser, no que cada valor sea el
+que la CMF publicó. Ese segundo tramo lo cubre `scripts/verificar_muestra.py`, que reabre los
+Excel originales y compara celdas elegidas al azar contra el CSV —los nulos incluidos—, pero
+lo hace **sobre una muestra**, no sobre las 2.460 celdas. Detecta lo que importa (un mapa de
+columnas corrido o un archivo asignado al mes equivocado afectan filas enteras) y no puede
+descartar un error aislado en una celda que la muestra no tocó.
 
 ## 8. El segmento "adeudado por bancos" no es analizable
 
@@ -118,9 +143,26 @@ provisión exigida, aunque la mora sea alta. **Este análisis no puede confirmar
 datos de la CMF**, porque los reportes usados entregan índices porcentuales y no los saldos
 que permitirían medir el peso de esa cartera.
 
-Consecuencia: el KPI central se lee sobre `total_colocaciones` y `consumo`. Cualquier
-lectura del segmento vivienda en retail financiero va acompañada de esta advertencia, y no
-se calculan promedios simples de vivienda entre los dos grupos.
+Consecuencia — dónde entra vivienda y dónde no:
+
+- **No entra en el KPI central.** El índice de cobertura que la portada y el comparativo
+  entre bancos muestran se calcula sobre `total_colocaciones`, y la lectura por segmento del
+  hallazgo principal se apoya en `consumo`. Vivienda nunca forma parte de esas cifras.
+- **Sí entra en la lectura por segmento, y nunca sin la advertencia al lado.** El dashboard
+  publica la brecha de *morosidad* de vivienda entre grupos —de 7,2 pp (2023) a 13,8 pp
+  (2026)— y `hallazgos.md` reporta además su cobertura por grupo (0,31 la banca tradicional,
+  0,06 el retail) dentro de la tabla por segmento. Son movimientos reales de la serie y
+  omitirlos sería esconder justo el segmento que más se abrió. La nota al pie de la página de
+  Segmentación lo declara en el mismo visual: los promedios entre bancos son simples y no
+  ponderados, y la vivienda de Ripley —mora de 13% a 27% con provisiones de 0,4-0,5%— es
+  cartera residual con garantía real.
+- **Lo que no se hace es leer esos promedios como riesgo comparable.** Son promedios simples
+  de dos bancos contra tres, dominados por la cartera residual de Ripley, y una cobertura de
+  0,06 puesta al lado de una de 1,3 se lee como alarma cuando en realidad refleja una
+  garantía hipotecaria. Ninguna de esas cifras se presenta sin la advertencia inmediatamente
+  a su lado, ni se usa para concluir nada sobre "el riesgo hipotecario del retail financiero".
+
+Regla operativa, para no dejarla a interpretación: **vivienda se publica, nunca se concluye.**
 
 ## 10. Quiebre en las provisiones comerciales de Banco Ripley
 

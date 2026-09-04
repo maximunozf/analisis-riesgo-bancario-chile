@@ -1,6 +1,6 @@
 # Validación cruzada del dashboard
 
-> **Objetivo:** probar que cada cifra visible en `dashboard/Proyecto CMF.pbix` sale de los mismos
+> **Objetivo:** probar que cada cifra visible en `dashboard/riesgo_bancario_cmf.pbix` sale de los mismos
 > datos y da el mismo número que la fuente. Si un visual y su consulta discrepan, o la medida DAX
 > está mal escrita, o el visual arrastra un filtro que no debería tener.
 

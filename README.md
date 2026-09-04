@@ -126,13 +126,17 @@ resuelve las trampas del origen: encabezados que cambian de posición entre mese
 que aparecen y desaparecen, y una fila oculta de códigos contables.
 
 Sobre eso corre el control de **calidad de datos**: perfilamiento previo de cinco meses de
-muestra, verificación de inventario antes de consolidar y validación de completitud del
-resultado —2.460 filas, 0 duplicados, 41 meses continuos sin huecos—, además de siete chequeos
-de integridad en la carga.
+muestra, verificación de inventario antes de consolidar, y validación automatizada del
+resultado —2.460 filas, 0 duplicados de clave, 0 valores fuera del rango 0-100%, 41 meses
+continuos sin huecos—, además de siete chequeos de integridad en la carga. Esas cifras no
+están escritas a mano: las imprime el propio script de consolidación, y con `--estricto`
+devuelve código de salida 1 si alguna falla. El mismo script verifica el encabezado de cada
+columna antes de leerla, de modo que un cambio de estructura en la fuente detiene el proceso
+en vez de producir un CSV corrido de segmento.
 
 El **modelado de datos** es dimensional: dos dimensiones (banco y tiempo) y una tabla de hechos
 en formato largo, con una restricción `UNIQUE` sobre el grano completo para que una recarga
-falle en vez de duplicar en silencio. El análisis vive en SQL y en DAX, y las 28 cifras que se
+falle en vez de duplicar en silencio. El análisis vive en SQL y en DAX, y las 44 cifras que se
 ven en el dashboard se contrastan contra su dato de origen con un script, no a ojo.
 
 ## Alcance
@@ -171,6 +175,8 @@ python scripts/descargar_cmf.py --dry-run   # muestra qué bajaría, sin descarg
 python scripts/descargar_cmf.py             # descarga la serie completa (~10 min)
 python scripts/verificar_inventario.py      # confirma que no hay meses faltantes
 python scripts/consolidar_datos_cmf.py      # genera el CSV consolidado
+python scripts/consolidar_datos_cmf.py --estricto   # igual, pero sale con código 1 si la calidad falla
+python scripts/verificar_muestra.py         # reabre los Excel y compara celdas al azar contra el CSV
 ```
 
 Para levantar la base y correr el análisis:
@@ -197,7 +203,7 @@ archivos parciales dados por buenos.
 **Sin instalar nada:** [`dashboard/dashboard_riesgo_cmf.pdf`](dashboard/dashboard_riesgo_cmf.pdf)
 son las tres páginas exportadas, y las capturas de este README salen de ese mismo PDF.
 
-`dashboard/Proyecto CMF.pbix` está en **modo Importar**, no DirectQuery: son 2.460 filas y el
+`dashboard/riesgo_bancario_cmf.pbix` está en **modo Importar**, no DirectQuery: son 2.460 filas y el
 archivo tiene que abrir aunque MySQL esté apagado. Para verlo no hace falta base de datos; para
 **actualizarlo** sí:
 
@@ -216,10 +222,11 @@ archivo tiene que abrir aunque MySQL esté apagado. Para verlo no hace falta bas
 ├── data/raw/morosidad/      Excel originales CMF (no versionados, nunca se modifican)
 ├── data/raw/provisiones/    Excel originales CMF (no versionados, nunca se modifican)
 ├── data/processed/          CSV consolidado y limpio
-├── scripts/                 descarga, verificación, consolidación, carga a MySQL
-│                            y validación del dashboard
+├── scripts/                 descarga, verificación, consolidación, carga a MySQL,
+│                            verificación de muestra contra el origen y validación
+│                            del dashboard
 ├── sql/                     create_tables.sql (esquema + vista) y analisis_riesgo.sql
-├── dashboard/               Proyecto CMF.pbix, el tema versionado y el PDF exportado
+├── dashboard/               riesgo_bancario_cmf.pbix, el tema versionado y el PDF exportado
 └── docs/                    alcance, perfilamiento, limitaciones, modelo de datos,
                              hallazgos, validación y capturas
 ```
@@ -325,9 +332,18 @@ Cada cifra visible en el dashboard se contrastó contra el dato del que sale. No
 prolijidad: una medida DAX mal escrita o un filtro de visual de más producen un número plausible
 y silenciosamente falso, **sin ningún mensaje de error**.
 
+La cadena se valida en sus dos tramos, con un script en cada uno:
+
 ```bash
-python scripts/validar_dashboard.py    # 44 cifras · sale con código 1 si alguna no cuadra
+python scripts/verificar_muestra.py    # Excel de la CMF → CSV · celdas al azar, reabriendo el origen
+python scripts/validar_dashboard.py    # CSV → dashboard · 44 cifras · sale con código 1 si alguna no cuadra
 ```
+
+El primero existe porque el segundo no alcanza: contrastar el dashboard contra el CSV prueba que
+la capa DAX no deformó el dato, pero no que el CSV diga lo mismo que el Excel del que salió. Eso
+descansaba en una inspección visual hecha una vez; ahora `verificar_muestra.py` elige celdas al
+azar, reabre el archivo de origen de cada una y compara —incluidos los nulos, porque que el CSV
+diga `NULL` donde la CMF publica `---` es parte del contrato.
 
 | Cifra en pantalla | Base | Cuántos valores | Resultado |
 |---|---|---|---|

@@ -324,9 +324,15 @@ WHERE dx IS NOT NULL;
 -- Esperado en pantalla: retail_financiero 1,37 · banca_tradicional 1,09
 --
 -- Por que AVG(indice_cobertura) y no SUM(prov)/SUM(mora): el indice ya viene
--- calculado por banco-mes en la vista, y promedio de razones no es igual a
--- razon de promedios (daba 1,32 donde el valor correcto es 1,34). La medida
--- DAX usa AVERAGE, asi que promediar aca es lo unico que hace valido el cruce.
+-- calculado por banco-mes en la vista, y promedio de razones NO es igual a
+-- razon de promedios. Sobre estos mismos datos, banca_tradicional 2026 da 1,09
+-- promediando las razones (que es lo que muestra la pantalla) y 1,07 dividiendo
+-- los promedios. La medida DAX usa AVERAGE, asi que promediar aca es lo unico
+-- que hace valido el cruce: con la otra formula el control marcaria un defecto
+-- inexistente. Los dos valores son correctos, miden cosas distintas, y el que
+-- se publica es el que la medida calcula. Es el defecto 2 de docs/validacion.md,
+-- donde quedo registrado con el caso de banca_tradicional 2023: 1,31 con la
+-- formula equivocada contra 1,34 con la correcta.
 --
 -- Por que se filtra el segmento: la vista trae los 6 niveles y un promedio sin
 -- filtrar mezcla el total con sus propias partes. Es el mismo filtro que la

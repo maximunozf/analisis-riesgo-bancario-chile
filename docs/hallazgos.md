@@ -155,12 +155,15 @@ Descomponiendo por segmento (promedio 2026): *(consulta 5)*
 | Personas (total) | 2,20% | 4,15% | 1,07 | 1,41 |
 
 Dos advertencias que hacen que estas dos filas extremas **no** deban leerse como riesgo
-comparable (ambas documentadas en `limitaciones.md`, secciones 7-8):
+comparable (ambas documentadas en `limitaciones.md`, secciones 9 y 10):
 
 - **Vivienda del retail** es cartera residual: Ripley dejó de originar hipotecarios y lo que
   queda es la cola morosa de una cartera que ya no se renueva, con garantía real detrás.
   Morosidad de 16% con provisiones de 0,45% es exactamente lo que se ve cuando el
-  denominador se achica y la garantía cubre. **No promediar vivienda entre grupos.**
+  denominador se achica y la garantía cubre. La fila se publica porque el movimiento es real,
+  pero **el 0,06 de cobertura no es comparable con el resto de la tabla y no sostiene ninguna
+  conclusión sobre el riesgo hipotecario del retail**: es un promedio simple de dos bancos
+  dominado por una cartera que se está extinguiendo.
 - **Comerciales del retail**: la mora se mantiene sobre 11% mientras las provisiones caen de
   8,0% a 2,9% en tres años. Una caída de provisiones sin caída de mora apunta a un evento
   contable (venta o castigo de cartera), no a una mejora de riesgo.

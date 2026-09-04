@@ -12,8 +12,14 @@
 -- se aplican en todas las consultas, en vez de repetirse en cada CASE WHEN.
 -- ===========================================================================
 
-DROP DATABASE IF EXISTS riesgo_bancario_cmf;
-CREATE DATABASE riesgo_bancario_cmf
+-- El DROP va comentado a proposito. Este script se publica en un repositorio y
+-- alguien puede correrlo completo sobre un servidor que ya tiene la base: una
+-- primera linea que borra sin preguntar no es una decision que corresponda
+-- tomar por el que lo ejecuta. Descomentalo solo si querés reconstruir la base
+-- desde cero.
+-- DROP DATABASE IF EXISTS riesgo_bancario_cmf;
+
+CREATE DATABASE IF NOT EXISTS riesgo_bancario_cmf
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_0900_ai_ci;
 
@@ -29,7 +35,7 @@ USE riesgo_bancario_cmf;
 -- (una clasificacion que yo defini, no un dato de la CMF) y debe poder
 -- auditarse en un solo lugar.
 -- ---------------------------------------------------------------------------
-CREATE TABLE dim_banco (
+CREATE TABLE IF NOT EXISTS dim_banco (
     id_banco          TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,
     codigo_banco      VARCHAR(30)  NOT NULL COMMENT 'Clave tecnica del CSV, snake_case',
     nombre_banco      VARCHAR(80)  NOT NULL COMMENT 'Nombre para mostrar en el dashboard',
@@ -54,7 +60,7 @@ CREATE TABLE dim_banco (
 -- con huecos rompe la inteligencia de tiempo en DAX y hace que un mes sin dato
 -- se lea como un mes en cero en vez de como un mes ausente.
 -- ---------------------------------------------------------------------------
-CREATE TABLE dim_tiempo (
+CREATE TABLE IF NOT EXISTS dim_tiempo (
     id_tiempo    INT UNSIGNED NOT NULL COMMENT 'AAAAMM, ej. 202301',
     fecha        DATE         NOT NULL COMMENT 'Primer dia del mes',
     anio         SMALLINT UNSIGNED NOT NULL,
@@ -93,7 +99,7 @@ CREATE TABLE dim_tiempo (
 -- es un rubro distinto de las colocaciones a clientes, no una parte de ellas.
 -- Se marca incluido_en_analisis = FALSE (ver docs/limitaciones.md).
 -- ---------------------------------------------------------------------------
-CREATE TABLE dim_segmento (
+CREATE TABLE IF NOT EXISTS dim_segmento (
     id_segmento           TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,
     codigo_segmento       VARCHAR(30) NOT NULL,
     nombre_segmento       VARCHAR(60) NOT NULL,
@@ -119,10 +125,14 @@ CREATE TABLE dim_segmento (
 -- 5 bancos x 41 meses x 6 segmentos x 2 indicadores = 2.460 filas.
 --
 -- POR QUE FORMATO LARGO Y NO UNA COLUMNA POR INDICADOR: agregar un tercer
--- indicador de la CMF manana es insertar filas, no alterar la tabla y
--- reescribir el script de carga. El costo es que la cobertura
--- (provisiones / morosidad) exige un self-join en vez de una division directa;
--- ese join esta resuelto una sola vez en la vista de mas abajo.
+-- indicador de la CMF manana entra como filas nuevas; no hay que agregar una
+-- columna a la tabla, ni reescribir el script de carga, ni tocar las consultas
+-- existentes, que ya filtran por indicador. Lo unico que si hay que ampliar es
+-- el ENUM de mas abajo con un ALTER TABLE: ese es el precio de que la base
+-- rechace un indicador mal escrito en vez de aceptarlo como valor nuevo. El
+-- otro costo es que la cobertura (provisiones / morosidad) exige un self-join
+-- en vez de una division directa; ese join esta resuelto una sola vez en la
+-- vista de mas abajo.
 --
 -- POR QUE indicador ES TEXTO Y NO UNA dim_indicador: son dos valores fijos,
 -- sin atributos propios que describir. Una dimension de dos filas y cero
@@ -139,7 +149,7 @@ CREATE TABLE dim_segmento (
 -- como 0 seria inventar un dato: 0% de morosidad y "no participa" no son lo
 -- mismo, y el 0 contaminaria cualquier promedio.
 -- ---------------------------------------------------------------------------
-CREATE TABLE fact_riesgo_crediticio (
+CREATE TABLE IF NOT EXISTS fact_riesgo_crediticio (
     id_hecho     INT UNSIGNED NOT NULL AUTO_INCREMENT,
     id_tiempo    INT UNSIGNED     NOT NULL,
     id_banco     TINYINT UNSIGNED NOT NULL,
