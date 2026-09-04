@@ -23,7 +23,10 @@ Cada decisión responde a un hallazgo documentado del perfilamiento:
   * Hallazgo #2 (la estructura de COLUMNAS es idéntica y estable en todo el
     período):  por eso las columnas se identifican por ÍNDICE FIJO configurable
     (COLUMNAS_MOROSIDAD / COLUMNAS_PROVISIONES). Es defendible fijarlas porque su estabilidad se
-    verificó manualmente en 5 meses distintos.
+    verificó manualmente en 5 meses distintos. Y para que esa estabilidad no
+    sea un supuesto de por vida, cada índice trae el token que debe aparecer
+    en su encabezado (TOKENS_ENCABEZADO_*): si la CMF inserta una columna, el
+    script aborta en vez de publicar valores corridos de segmento.
 
   * Hallazgo #3 (el nº de filas de encabezado VARÍA entre meses):  por eso las
     FILAS de cada banco NO se fijan; se localizan dinámicamente buscando el
@@ -55,7 +58,16 @@ CÓMO USARLO
 
        python consolidar_datos_cmf.py
 
-   Lee las dos carpetas, valida completitud y escribe el CSV consolidado.
+   Lee las dos carpetas, verifica los encabezados, valida completitud y
+   calidad, y escribe el CSV consolidado.
+
+3) Consolidar dentro de una cadena automatizada:
+
+       python consolidar_datos_cmf.py --estricto
+
+   Igual que lo anterior, pero devuelve código de salida 1 si la validación
+   de calidad encuentra duplicados, valores fuera de rango o huecos en la
+   serie mensual. Sin este flag el script siempre sale con 0.
 
 Dependencias:  pandas, openpyxl   (pip install pandas openpyxl)
 """
@@ -177,6 +189,43 @@ COLUMNAS_PROVISIONES = {
     "adeudado_bancos":    9,
 }
 
+# Token que DEBE aparecer en el encabezado de cada columna configurada.
+#
+# POR QUÉ EXISTE ESTE SEGUNDO MAPA (es la protección más importante del script):
+# fijar las columnas por índice es rápido y legible, pero tiene un modo de falla
+# silencioso. Si la CMF INSERTA una columna intermedia —que es exactamente lo que
+# ya hizo una vez, y por eso este script tiene dos mapas de columnas y no uno—
+# todos los índices se corren, el script no lanza ningún error, la validación de
+# completitud reporta 100% y el CSV queda lleno de números plausibles y falsos:
+# 'comerciales' guardado como 'total', 'consumo' como 'personas'. El chequeo de
+# índice fuera de rango no lo detecta, porque las columnas siguen existiendo.
+#
+# La verificación es directa: antes de leer un solo valor, se confirma que el
+# texto del encabezado de cada columna contenga su token. Si no lo contiene, el
+# script ABORTA en vez de publicar. Es la diferencia entre un pipeline que falla
+# ruidosamente y uno que miente en silencio.
+#
+# Los tokens están normalizados (sin tildes, minúsculas) y son fragmentos, no
+# nombres completos, para tolerar los sufijos de nota al pie que la CMF agrega
+# y quita entre meses ("Vivienda" en morosidad, "Vivienda (3)" en provisiones).
+TOKENS_ENCABEZADO_MOROSIDAD = {
+    "total_colocaciones": "colocaciones a costo amortizado",
+    "comerciales":        "comerciales",
+    "personas_total":     "personas",
+    "consumo":            "consumo",
+    "vivienda":           "vivienda",
+    "adeudado_bancos":    "adeudado por bancos",
+}
+
+TOKENS_ENCABEZADO_PROVISIONES = {
+    "total_colocaciones": "creditos y cuentas por cobrar a clientes",
+    "comerciales":        "comerciales",
+    "personas_total":     "personas",
+    "consumo":            "consumo",
+    "vivienda":           "vivienda",
+    "adeudado_bancos":    "adeudado por bancos",
+}
+
 # Nombres de indicador tal como quedarán en el CSV (snake_case).
 INDICADOR_MOROSIDAD = "morosidad_90d"
 INDICADOR_PROVISIONES = "indice_provisiones"
@@ -229,7 +278,13 @@ def limpiar_valor(valor):
         return None
 
     # Marcadores explícitos de dato no disponible.
-    if normalizar(texto) in {"-", "s/i", "n/d", "nd", "na", "n.a."}:
+    #
+    # "---" (tres guiones) es el que la CMF usa realmente cuando un banco no
+    # opera un segmento —está documentado en docs/limitaciones.md §10— y hasta
+    # ahora caía en el `except ValueError` del final: funcionaba, pero por
+    # accidente y no por diseño. Se listan las tres variantes de guión porque
+    # el ancho del guión cambia entre archivos y no es visible al leerlos.
+    if normalizar(texto) in {"-", "--", "---", "s/i", "s/d", "n/d", "nd", "na", "n.a."}:
         return None
 
     # Quita símbolo de porcentaje y espacios internos.
@@ -365,7 +420,60 @@ def localizar_fila_banco(grilla: pd.DataFrame, tokens, modo: str):
     return None
 
 
-def extraer_archivo(ruta: Path, hoja: str, indicador: str, columnas: dict) -> list:
+def verificar_encabezados(grilla: pd.DataFrame, columnas: dict, tokens: dict,
+                          fila_primer_banco: int, ruta: Path) -> None:
+    """
+    Confirma que cada columna configurada sea realmente la que dice ser, leyendo
+    su encabezado. Lanza ValueError si alguna no coincide.
+
+    Cómo delimita el encabezado: TODO lo que está por encima de la primera fila
+    de banco. No se fija un número de filas porque ese número varía entre meses
+    (Hallazgo #3); se deriva del propio archivo, igual que las filas de banco.
+
+    Por qué junta todas las filas del encabezado en un solo texto por columna:
+    el encabezado real ocupa varias filas y viene con celdas combinadas
+    ('Personas' arriba, 'Total' abajo), de modo que ninguna fila por separado
+    contiene el nombre completo del segmento. Concatenando la columna entera el
+    token aparece sin importar en qué fila del bloque quedó esta vez.
+
+    Efecto práctico: si la CMF inserta o elimina una columna, los índices se
+    corren, el token deja de estar donde se lo espera y el script se detiene
+    ANTES de escribir el CSV. Es el único control que distingue "no hay datos"
+    de "hay datos pero son del segmento equivocado".
+    """
+    problemas = []
+    for segmento, col in columnas.items():
+        token = tokens[segmento]
+        if col >= grilla.shape[1]:
+            problemas.append(f"    - {segmento}: la columna [{col}] no existe "
+                             f"(el archivo tiene {grilla.shape[1]} columnas)")
+            continue
+        # Texto del encabezado de esa columna: todo lo que hay arriba del primer banco.
+        # Se descartan las celdas vacías: pandas las entrega como NaN y str(NaN)
+        # es "nan", que llenaría el mensaje de error de ruido justo cuando hay
+        # que leerlo para entender qué se corrió.
+        celdas = [c for c in grilla.iloc[0:fila_primer_banco, col].tolist()
+                  if c is not None and not (isinstance(c, float) and c != c)]
+        encabezado = " ".join(normalizar(c) for c in celdas)
+        if token not in encabezado:
+            problemas.append(f"    - {segmento}: se esperaba '{token}' en la "
+                             f"columna [{col}] y el encabezado dice "
+                             f"'{encabezado[:80].strip()}'")
+
+    if problemas:
+        raise ValueError(
+            f"\n[X] El encabezado de {ruta.name} no coincide con el mapa de columnas.\n"
+            + "\n".join(problemas)
+            + "\n\n    Probable causa: la CMF cambió la estructura del reporte "
+              "(insertó o quitó una columna).\n"
+              "    NO se escribe el CSV: los valores estarían corridos de segmento.\n"
+              f"    Revisá el archivo con:  python consolidar_datos_cmf.py --inspeccionar \"{ruta}\"\n"
+              "    y ajustá COLUMNAS_* y TOKENS_ENCABEZADO_* con lo que veas."
+        )
+
+
+def extraer_archivo(ruta: Path, hoja: str, indicador: str, columnas: dict,
+                    tokens: dict) -> list:
     """
     Extrae los registros de un archivo y los devuelve en formato LARGO (tidy):
     una fila por combinación (periodo, banco, indicador, segmento, valor).
@@ -379,13 +487,28 @@ def extraer_archivo(ruta: Path, hoja: str, indicador: str, columnas: dict) -> li
     grilla = leer_grilla(ruta, hoja)
     registros = []
 
+    # Primero se ubican TODOS los bancos, antes de leer un solo valor.
+    # Sirve para dos cosas: reportar los faltantes, y saber dónde termina el
+    # bloque de encabezado (todo lo que está arriba del primer banco), que es
+    # lo que necesita verificar_encabezados para no depender de un número fijo
+    # de filas.
+    filas_banco = {}
     for banco, cfg in BANCOS_ALCANCE.items():
         fila = localizar_fila_banco(grilla, cfg["tokens"], cfg["modo"])
         if fila is None:
             # El banco no está en este mes: se deja constancia pero no se corta.
             print(f"    [!] {banco} no encontrado en {ruta.name}")
             continue
+        filas_banco[banco] = fila
 
+    if not filas_banco:
+        print(f"    [!] Ningún banco de alcance en {ruta.name}: se omite el archivo")
+        return []
+
+    verificar_encabezados(grilla, columnas, tokens, min(filas_banco.values()), ruta)
+
+    for banco, fila in filas_banco.items():
+        cfg = BANCOS_ALCANCE[banco]
         for segmento, col in columnas.items():
             # Protección: la columna configurada podría no existir en la grilla.
             if col >= grilla.shape[1]:
@@ -407,7 +530,8 @@ def extraer_archivo(ruta: Path, hoja: str, indicador: str, columnas: dict) -> li
     return registros
 
 
-def procesar_directorio(directorio: Path, hoja: str, indicador: str, columnas: dict) -> list:
+def procesar_directorio(directorio: Path, hoja: str, indicador: str,
+                        columnas: dict, tokens: dict) -> list:
     """Procesa todos los .xlsx de una carpeta y acumula los registros."""
     if not directorio.exists():
         raise FileNotFoundError(f"No existe la carpeta {directorio}")
@@ -441,13 +565,84 @@ def procesar_directorio(directorio: Path, hoja: str, indicador: str, columnas: d
     print(f"  Procesando {len(en_alcance)} archivo(s) de '{indicador}'...")
     for archivo in en_alcance:
         print(f"  - {archivo.name}")
-        todos.extend(extraer_archivo(archivo, hoja, indicador, columnas))
+        todos.extend(extraer_archivo(archivo, hoja, indicador, columnas, tokens))
     return todos
 
 
 # =========================================================================
 # 4. VALIDACIÓN DE COMPLETITUD
 # =========================================================================
+
+def validar_calidad(df: pd.DataFrame) -> list:
+    """
+    Chequeos de CALIDAD del consolidado. Devuelve la lista de problemas
+    encontrados (vacía = todo en orden).
+
+    Por qué existe separado de validar_completitud: completitud responde
+    "¿están todas las celdas?"; calidad responde "¿son creíbles?". Son dos
+    preguntas distintas y una puede pasar mientras la otra falla: un mapa de
+    columnas corrido da 100% de completitud con valores del segmento equivocado.
+
+    Los tres chequeos son los que docs/limitaciones.md §7 declara. Antes eran
+    una afirmación escrita a mano en un markdown; acá son salida de programa,
+    que es lo único que un lector puede reproducir.
+
+      1. DUPLICADOS de la clave del grano (periodo+banco+indicador+segmento).
+         Un duplicado significa que un mes se procesó dos veces o que un Excel
+         trae el banco repetido, y en cualquier promedio pesaría doble.
+         Es la misma garantía que la UNIQUE KEY uq_grano_hecho en MySQL: el
+         chequeo acá la anticipa, para no descubrirlo recién en la carga.
+
+      2. RANGO: los dos indicadores son índices porcentuales, así que un valor
+         negativo o mayor a 100 no es un dato malo, es un dato imposible —
+         señal de columna corrida o de un decimal mal interpretado.
+
+      3. CONTINUIDAD mensual: que haya 41 meses distintos no prueba que sean
+         41 meses CONSECUTIVOS. Un mes faltante en el medio deja un hueco que
+         ninguna serie temporal muestra como hueco: el gráfico simplemente une
+         los dos puntos vecinos y la caída desaparece de la vista.
+    """
+    problemas = []
+    print("\n" + "=" * 60)
+    print("VALIDACIÓN DE CALIDAD")
+    print("=" * 60)
+
+    # 1. Duplicados de clave del grano.
+    clave = ["periodo", "banco", "indicador", "segmento"]
+    n_dup = int(df.duplicated(subset=clave).sum())
+    print(f"  Duplicados de clave ({'+'.join(clave)}) : {n_dup}")
+    if n_dup:
+        problemas.append(f"{n_dup} fila(s) duplicada(s) en la clave del grano")
+        for _, fila in df[df.duplicated(subset=clave, keep=False)].iterrows():
+            print(f"      - {fila['periodo']} {fila['banco']} "
+                  f"{fila['indicador']} {fila['segmento']}")
+
+    # 2. Valores fuera del rango posible para un índice porcentual.
+    fuera = df[(df["valor"] < 0) | (df["valor"] > 100)]
+    print(f"  Valores negativos o > 100%             : {len(fuera)}")
+    if len(fuera):
+        problemas.append(f"{len(fuera)} valor(es) fuera del rango 0-100%")
+        for _, fila in fuera.head(10).iterrows():
+            print(f"      - {fila['periodo']} {fila['banco']} "
+                  f"{fila['segmento']} = {fila['valor']}")
+
+    # 3. Continuidad mensual, por indicador.
+    for indicador, sub in df.groupby("indicador"):
+        meses = sorted(pd.to_datetime(sub["periodo"]).dt.to_period("M").unique())
+        esperados = pd.period_range(meses[0], meses[-1], freq="M")
+        huecos = [str(m) for m in esperados if m not in set(meses)]
+        # Se listan como máximo 6 huecos: si faltan 39 meses el problema no es
+        # cuáles, es que la carpeta está incompleta, y una lista de 39 nombres
+        # tapa el resto del informe de validación.
+        resumen = ", ".join(huecos[:6]) + (f" (+{len(huecos) - 6} más)" if len(huecos) > 6 else "")
+        print(f"  Meses continuos en {indicador:<20}: "
+              f"{'sí, sin huecos' if not huecos else 'NO — faltan ' + resumen}"
+              f"  ({meses[0]} → {meses[-1]}, {len(meses)} meses)")
+        if huecos:
+            problemas.append(f"{indicador}: faltan {len(huecos)} mes(es) — {resumen}")
+
+    return problemas
+
 
 def validar_completitud(df: pd.DataFrame) -> None:
     """
@@ -579,6 +774,17 @@ def main():
         "--hoja", default=None,
         help="Nombre de hoja a usar con --inspeccionar (si no, se deduce de la carpeta)."
     )
+    # Por qué existe --estricto: sin él, un banco no encontrado o un mes
+    # faltante terminan igual en "[OK] CSV consolidado escrito" con código de
+    # salida 0. Eso sirve mientras se explora, pero convierte al script en algo
+    # que no se puede encadenar: cualquier automatización que lo llame creería
+    # que salió bien. Con --estricto, un problema de calidad devuelve 1 y corta
+    # la cadena antes de que el CSV llegue a MySQL o al dashboard.
+    parser.add_argument(
+        "--estricto", action="store_true",
+        help="Devuelve código de salida 1 si la validación de calidad encuentra "
+             "problemas (para encadenar en un pipeline)."
+    )
     args = parser.parse_args()
 
     # Modo 1: inspeccionar un archivo y salir.
@@ -589,10 +795,21 @@ def main():
     # Modo 2 (por defecto): consolidar todo.
     print("Consolidando reportes CMF...\n")
     registros = []
-    registros += procesar_directorio(
-        DIR_MOROSIDAD, HOJA_MOROSIDAD, INDICADOR_MOROSIDAD, COLUMNAS_MOROSIDAD)
-    registros += procesar_directorio(
-        DIR_PROVISIONES, HOJA_PROVISIONES, INDICADOR_PROVISIONES, COLUMNAS_PROVISIONES)
+    # El corrimiento de columnas se trata como error fatal, no como advertencia:
+    # el mensaje explica qué columna dejó de ser la que era y el script termina
+    # con código 1 sin escribir nada. Se atrapa acá para mostrarlo limpio en vez
+    # de un traceback, que en un pipeline es la diferencia entre un aviso legible
+    # y un log que nadie lee.
+    try:
+        registros += procesar_directorio(
+            DIR_MOROSIDAD, HOJA_MOROSIDAD, INDICADOR_MOROSIDAD,
+            COLUMNAS_MOROSIDAD, TOKENS_ENCABEZADO_MOROSIDAD)
+        registros += procesar_directorio(
+            DIR_PROVISIONES, HOJA_PROVISIONES, INDICADOR_PROVISIONES,
+            COLUMNAS_PROVISIONES, TOKENS_ENCABEZADO_PROVISIONES)
+    except ValueError as e:
+        print(e)
+        sys.exit(1)
 
     if not registros:
         print("\n[X] No se generó ningún registro. Revisá las carpetas data/raw.")
@@ -606,12 +823,29 @@ def main():
     df = df.sort_values(["indicador", "periodo", "banco", "segmento"]).reset_index(drop=True)
 
     validar_completitud(df)
+    problemas = validar_calidad(df)
 
     # Escritura del CSV consolidado (solo en data/processed, nunca en raw).
+    #
+    # El CSV se escribe SIEMPRE, incluso con problemas: para diagnosticar un
+    # duplicado o un valor imposible hay que poder mirarlo. Lo que cambia con
+    # --estricto es el código de salida, no la escritura.
     RUTA_SALIDA.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(RUTA_SALIDA, index=False, encoding="utf-8-sig")
     print(f"\n[OK] CSV consolidado escrito en: {RUTA_SALIDA}")
     print(f"     {len(df)} filas x {df.shape[1]} columnas")
+
+    if problemas:
+        print(f"\n[!] La validación de calidad encontró {len(problemas)} problema(s):")
+        for p in problemas:
+            print(f"    - {p}")
+        if args.estricto:
+            print("    Modo --estricto: se corta con código de salida 1.")
+            sys.exit(1)
+        print("    Corré con --estricto para que esto devuelva código de salida 1.")
+    else:
+        print("     Validación de calidad: sin duplicados, sin valores fuera de "
+              "rango, serie mensual continua.")
 
 
 if __name__ == "__main__":
