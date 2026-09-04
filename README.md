@@ -60,6 +60,9 @@ en [`docs/hallazgos.md`](docs/hallazgos.md).
 
 ## El dashboard
 
+📄 **[Ver el dashboard completo en PDF](dashboard/dashboard_riesgo_cmf.pdf)** — se abre en el
+navegador, sin instalar Power BI ni descargar nada.
+
 Tres páginas en Power BI, cada una con **una** pregunta, no con quince métricas sueltas.
 
 ### 1 · Portada — ¿se mueven igual los dos grupos?
@@ -117,6 +120,13 @@ un abismo entre retail y banca, y que **en consumo las dos líneas casi se tocan
 Se muestran solo las carteras hoja (comerciales, consumo, vivienda). Los agregados quedan fuera:
 un total junto a sus propias partes en el mismo eje invita a sumarlos, que es exactamente lo que
 estos datos no permiten.
+
+Vivienda es el panel que exige una advertencia, y la lleva escrita en la nota al pie de la
+página: la cartera de vivienda de Ripley pasa de 13% a 27% de mora con provisiones de 0,4-0,5%,
+y es cartera residual con garantía real. La brecha de vivienda se publica porque es el segmento
+que más se abrió en el período, pero no se usa para concluir nada sobre el riesgo hipotecario
+del retail: la regla del proyecto es **vivienda se publica, nunca se concluye**, y está
+justificada en [`docs/limitaciones.md`](docs/limitaciones.md) §9.
 
 ## Cómo se construyó
 
@@ -258,8 +268,11 @@ firma `PK`. El portal a veces devuelve páginas de error con HTTP 200; verificar
 primeros bytes las detecta antes de que contaminen el consolidado.
 
 **La tabla de hechos está en formato largo, no una columna por indicador.** Agregar un
-tercer indicador de la CMF es insertar filas, no alterar la tabla y reescribir la carga. El
-costo —que la cobertura exige un self-join— se paga una sola vez en la vista
+tercer indicador de la CMF entra como filas nuevas: no hay que agregar una columna, ni
+reescribir el script de carga, ni tocar las consultas, que ya filtran por indicador. Lo que
+sí hay que ampliar es el `ENUM` de la columna `indicador`, con un `ALTER TABLE`: ese es el
+precio de que la base rechace un indicador mal escrito en vez de aceptarlo como valor nuevo.
+El otro costo —que la cobertura exige un self-join— se paga una sola vez en la vista
 `vw_riesgo_ancho`. El razonamiento completo del modelo, con el diagrama ER, está en
 [`docs/modelo_datos.md`](docs/modelo_datos.md).
 
@@ -277,8 +290,10 @@ donde el filtro se traslada de la medida al eje del visual.
 
 **La cobertura se promedia, no se recalcula: `AVERAGE(indice_cobertura)`, no
 `DIVIDE(provisiones, morosidad)`.** El índice ya viene calculado por banco-mes en la vista, y
-promedio de razones ≠ razón de promedios. La segunda forma daba 1,32 donde el valor correcto es
-1,34, y además rompía el contraste 1:1 contra el SQL.
+promedio de razones ≠ razón de promedios. Para la banca tradicional en 2023 la segunda forma
+da 1,31 donde el valor correcto es 1,34 — una diferencia chica, y por eso peligrosa: pasa por
+error de redondeo. Además rompía el contraste 1:1 contra el SQL. El caso está documentado como
+defecto 2 en [`docs/validacion.md`](docs/validacion.md).
 
 **El calendario de Power BI se genera con DAX, no se importa `dim_tiempo`.** DAX exige que la
 tabla marcada como *tabla de fechas* sea continua día por día, y `dim_tiempo` es mensual (41

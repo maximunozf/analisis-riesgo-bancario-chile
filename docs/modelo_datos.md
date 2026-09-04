@@ -72,7 +72,7 @@ flowchart TD
 
 | Decisión | Alternativa descartada | Por qué |
 |---|---|---|
-| Tabla de hechos en **formato largo** | Una columna por indicador | Agregar un tercer indicador de la CMF es insertar filas, no alterar la tabla ni reescribir la carga. El costo —un *self-join* para la cobertura— se paga una sola vez, en la vista `vw_riesgo_ancho`. |
+| Tabla de hechos en **formato largo** | Una columna por indicador | Agregar un tercer indicador de la CMF entra como filas nuevas: no hay que agregar una columna, ni reescribir la carga, ni tocar las consultas. Lo que sí hay que ampliar es el `ENUM` de `indicador`, con un `ALTER TABLE` — el precio de que la base rechace un valor mal escrito. El otro costo —un *self-join* para la cobertura— se paga una sola vez, en la vista `vw_riesgo_ancho`. |
 | `indicador` como **dimensión degenerada** (texto en la fact) | `dim_indicador` | Son dos valores fijos sin atributos propios que describir. Una dimensión de dos filas y cero atributos agrega un join a cada consulta sin agregar información. |
 | `dim_segmento` **sí** como tabla | Segmento como texto en la fact | Los segmentos no están al mismo nivel. Sin `nivel_agregacion` declarado en algún lugar, un gráfico con los 6 segmentos lado a lado muestra totales junto a sus propias partes. |
 | `id_segmento_padre` **autorreferente** | Jerarquía escrita en un comentario | La jerarquía queda declarada *en los datos* y consultable con un join, en vez de depender de que alguien lea la documentación. |
