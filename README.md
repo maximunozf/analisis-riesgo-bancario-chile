@@ -45,12 +45,20 @@ porque un promedio anual y un mes puntual no son intercambiables.
 La correlación entre las dos series mensuales de morosidad es **−0,19**: no es un ciclo de
 crédito común empujando a los cinco bancos, son dos trayectorias distintas.
 
-Y al bajar del grupo al banco aparece el corolario que rompe la intuición:
+Y al bajar del grupo al banco aparece el corolario que rompe la intuición. Las cifras del recuadro
+que sigue están en **el último mes publicado (may-2026)**, no en promedio anual —es la foto de hoy,
+que es la pregunta que se hace un área de riesgo cuando mira el ranking—; la única excepción es la
+variación de cobertura, que va de ene-2023 a may-2026, igual que el visual del dashboard.
 
 > **Más mora no es menos cobertura.** El banco más moroso de los cinco (Ripley, 4,91%) es a la
-> vez el mejor cubierto (1,60) y el único que **reforzó** su cobertura desde 2023 (+0,13). El
-> único que provisiona bajo su propia cartera morosa (BCI, cobertura 0,90) es de los que menos
-> mora tienen (1,90%), y lleva 25 de 41 meses en esa posición.
+> vez el mejor cubierto (1,60) y el único que **reforzó** su cobertura desde 2023 (+0,13 entre
+> ene-2023 y may-2026). El único que provisiona bajo su propia cartera morosa (BCI, cobertura
+> 0,90) es de los que menos mora tienen (1,90%), y lleva 25 de 41 meses en esa posición.
+
+Medido sobre la serie completa de 41 meses el orden no cambia —Ripley sigue siendo el más moroso y
+el mejor cubierto— pero las magnitudes sí: 5,76% de mora y 1,44 de cobertura. Por eso el párrafo
+declara su base. En este proyecto conviven tres —último mes, promedio anual y serie completa— y
+ninguna es intercambiable con otra.
 
 Morosidad y cobertura no son dos formas de medir lo mismo: la primera describe la cartera, la
 segunda describe la decisión del banco frente a esa cartera.
@@ -390,6 +398,14 @@ también entra al control: las 44 cifras se recalculan desde el CSV, cada una co
 
 - [Indicador de morosidad de 90 días o más — CMF](https://www.cmfchile.cl/portal/estadisticas/617/w3-propertyvalue-28914.html)
 - [Indicadores de Provisiones por Riesgo de Crédito de Bancos — CMF](https://www.cmfchile.cl/portal/estadisticas/617/w3-propertyvalue-29554.html)
+
+## Sobre el desarrollo
+
+Parte de este proyecto se construyó con asistencia de IA, y varios commits del historial lo dejan
+registrado con `Co-Authored-By`. Prefiero decirlo yo antes de que lo pregunte alguien: cada decisión
+técnica, cada cifra publicada y cada limitación documentada están verificadas por mí. Los scripts
+`verificar_muestra.py` y `validar_dashboard.py` existen precisamente para que esa verificación no
+dependa de mi palabra —se corren, y contestan solos.
 
 ## Licencia
 

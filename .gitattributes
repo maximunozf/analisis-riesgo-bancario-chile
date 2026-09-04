@@ -1,0 +1,5 @@
+# GitHub clasifica los .sql como tipo "data" y por eso los excluye de la barra de
+# lenguajes del repositorio. Este proyecto vive en SQL tanto como en Python —el modelo
+# dimensional y el analisis comparativo estan ahi— asi que se declara explicitamente
+# para que el lenguaje que muestra GitHub coincida con el que realmente se usa.
+*.sql linguist-detectable=true
