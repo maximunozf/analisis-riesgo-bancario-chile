@@ -134,7 +134,7 @@ página: la cartera de vivienda de Ripley pasa de 13% a 27% de mora con provisio
 y es cartera residual con garantía real. La brecha de vivienda se publica porque es el segmento
 que más se abrió en el período, pero no se usa para concluir nada sobre el riesgo hipotecario
 del retail: la regla del proyecto es **vivienda se publica, nunca se concluye**, y está
-justificada en [`docs/limitaciones.md`](docs/limitaciones.md) §9.
+justificada en [`docs/limitaciones.md`](docs/limitaciones.md).
 
 ## Cómo se construyó
 
