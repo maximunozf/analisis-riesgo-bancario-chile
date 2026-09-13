@@ -20,6 +20,15 @@ Se mide con tres indicadores mensuales por banco y por segmento de cartera:
 El índice de cobertura es el KPI central: dos bancos con la misma morosidad pueden tener
 posturas de riesgo completamente distintas según cuánto provisionen.
 
+Por qué estos datos
+
+La CMF publica mensualmente, en formato abierto y con serie histórica, la morosidad y las provisiones de todos los bancos que operan en Chile. Es la única fuente que permite comparar el riesgo entre instituciones sin depender de información interna de ninguna de ellas.
+De ahí se seleccionaron cinco, dos contra tres, para que la diferencia observada venga del modelo de negocio y no del tamaño del balance:
+
+Retail financiero: Banco Falabella y  Banco Ripley — bancos nacidos de una casa comercial, con cartera de consumo predominante.
+Banca tradicional: Banco de Chile,  Banco de Crédito e Inversiones y Banco Santander-Chile.
+Los cinco publican los dos reportes en los 41 meses del período, sin meses faltantes. La contrapartida de elegir cinco y no el sistema completo está en Limitaciones: con grupos de 2 y 3, el promedio es sensible al movimiento de un solo banco.
+
 ## Resultado principal
 
 > **Los dos grupos se movieron en direcciones opuestas.** Entre enero de 2023 y mayo de
