@@ -420,7 +420,7 @@ dependa de mi palabra —se corren, y contestan solos.
 
 MIT — ver [`LICENSE`](LICENSE). Los datos son de dominio público y pertenecen a la CMF.
 
-Qué me llevo de este proyecto
+## Qué me llevo de este proyecto
 
 Un tablero puede estar correcto en pantalla y equivocado en el dato. Los cuatro defectos que encontré no daban error: la cifra salía, y salía mal. Desde entonces valido contra el origen con un script antes de publicar, no después de que alguien pregunte.
 El texto interpretativo envejece igual que una medida. El cuarto defecto estaba en los cuadros de texto escritos a mano, que quedaban fuera del control automático. Hoy también entran al script.
